@@ -21,6 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { updateUserRole, updateUserStatus } from "../actions/admin.actions";
+import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { Search, Shield, ShieldAlert, User as UserIcon, CheckCircle2, XCircle, Clock, Ban } from "lucide-react";
 
@@ -44,12 +45,15 @@ export function UserManagementTable({ users }: { users: UserProfile[] }) {
       u.role?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const supabase = createClient();
+
   const handleRoleChange = (userId: string, newRole: "user" | "admin" | "super_admin") => {
     startTransition(async () => {
       const res = await updateUserRole(userId, newRole);
       if (res.error) {
         toast.error(res.error);
       } else {
+        await supabase.auth.refreshSession();
         toast.success("Role updated successfully");
       }
     });
@@ -61,6 +65,9 @@ export function UserManagementTable({ users }: { users: UserProfile[] }) {
       if (res.error) {
         toast.error(res.error);
       } else {
+        if (newStatus === "approved") {
+          await supabase.auth.refreshSession();
+        }
         toast.success(`Account status updated to ${newStatus}`);
       }
     });

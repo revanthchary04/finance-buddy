@@ -49,9 +49,10 @@ export default async function PendingApprovalsPage() {
                   <div>
                     <p className="text-sm font-semibold leading-none">{user.full_name || "New Account"}</p>
                     <p className="text-xs text-muted-foreground mt-1">{user.email}</p>
-                    <p className="text-[10px] text-muted-foreground/60 mt-0.5">
-                      Requested on {new Date(user.created_at).toLocaleDateString()}
-                    </p>
+                    <div className="flex items-center text-xs text-muted-foreground">
+                      <Clock className="w-3.5 h-3.5 mr-1" />
+                      Requested on {new Date(user.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 self-end sm:self-center">

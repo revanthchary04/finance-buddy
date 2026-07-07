@@ -11,6 +11,7 @@ import { User, Globe, Camera, Loader2 } from "lucide-react";
 import { updateProfile } from "../actions/settings.actions";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useRouter } from "next/navigation";
 
 export function SettingsForm({ profile }: { profile: any }) {
   const [isPending, startTransition] = useTransition();
@@ -25,6 +26,7 @@ export function SettingsForm({ profile }: { profile: any }) {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
+  const router = useRouter();
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
@@ -62,6 +64,7 @@ export function SettingsForm({ profile }: { profile: any }) {
       if (updateError) throw updateError;
       
       toast.success("Profile picture updated!");
+      router.refresh();
     } catch (error: any) {
       toast.error(error.message || "Error uploading image");
     } finally {
@@ -170,9 +173,10 @@ export function SettingsForm({ profile }: { profile: any }) {
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   className="bg-background/50"
-                  placeholder="+1 (555) 000-0000"
+                  placeholder="+91 99999 99999"
                   required
                 />
+                <p className="text-[11px] text-muted-foreground mt-1">Please include your country dial code.</p>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="designation">Designation</Label>

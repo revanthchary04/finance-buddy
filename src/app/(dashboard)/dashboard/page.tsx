@@ -35,7 +35,6 @@ export default async function DashboardPage() {
     status: tx.type === "income" ? "Done" : "In Process",
     target: `₹${Number(tx.amount).toLocaleString("en-IN")}`,
     limit: tx.type === "income" ? "Credit" : "Debit",
-    reviewer: "System Admin",
   }));
 
   return (

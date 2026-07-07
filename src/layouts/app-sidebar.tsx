@@ -8,6 +8,7 @@ import { useAuth } from "@/providers/auth-provider";
 import { getPendingUsers } from "@/features/admin/actions/admin.actions";
 import { Badge } from "@/components/ui/badge";
 import { QuickApproveDialog } from "@/features/admin/components/quick-approve-dialog";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Sidebar,
   SidebarContent,
@@ -22,18 +23,21 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { NavUser } from "./nav-user";
-import { Wallet, User } from "lucide-react";
+import { Wallet, Sparkles } from "lucide-react";
 
 export function AppSidebar({
   initialProfile,
+  initialUser,
   ...props
 }: {
   initialProfile?: any;
+  initialUser?: any;
 } & React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
-  const { profile: clientProfile } = useAuth();
+  const { profile: clientProfile, user: clientUser } = useAuth();
 
-  const profile = clientProfile || initialProfile;
+  const profile = initialProfile || clientProfile;
+  const user = initialUser || clientUser;
   const role = profile?.role === "admin" || profile?.role === "super_admin" ? "admin" : "user";
   const navItems = navigationConfig[role] || navigationConfig.user;
 
@@ -75,7 +79,6 @@ export function AppSidebar({
       
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {mainItems.map((item) => (
@@ -88,6 +91,22 @@ export function AppSidebar({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Support</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === "/feature-requests"}>
+                  <Link href="/feature-requests">
+                    <Sparkles />
+                    <span>Feature Requests</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -120,35 +139,12 @@ export function AppSidebar({
         )}
       </SidebarContent>
 
-      <SidebarFooter className="pb-4">
-        <NavUser />
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild className="mb-1 text-muted-foreground hover:text-foreground">
-              <Link href="/settings">
-                <User className="size-4" />
-                <span>Profile Settings</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <form action={async () => {
-              const { signOut } = await import("@/features/auth/actions/auth.actions");
-              await signOut();
-            }}>
-              <SidebarMenuButton 
-                type="submit"
-                className="mt-2 text-rose-500 hover:bg-rose-500/10 hover:text-rose-600 font-medium"
-              >
-                <Wallet className="size-4 rotate-180 opacity-0 hidden" />
-                <span className="flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>
-                  Log out
-                </span>
-              </SidebarMenuButton>
-            </form>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      <SidebarFooter className="mt-auto shrink-0 border-t p-3 space-y-2 overflow-hidden">
+        <div className="flex items-center justify-between px-2 py-1 group-data-[collapsible=icon]:justify-center">
+          <span className="text-sm text-muted-foreground group-data-[collapsible=icon]:hidden">Theme</span>
+          <ThemeToggle />
+        </div>
+        <NavUser user={clientUser || initialUser} profile={profile} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

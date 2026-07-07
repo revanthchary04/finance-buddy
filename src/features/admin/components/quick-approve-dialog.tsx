@@ -31,12 +31,15 @@ export function QuickApproveDialog() {
     fetchPending();
   }, [open]);
 
+  const supabase = createClient();
+
   const handleApprove = (userId: string) => {
     startTransition(async () => {
       const res = await approveUser(userId);
       if (res?.error) {
         toast.error(res.error);
       } else {
+        await supabase.auth.refreshSession();
         toast.success("User request accepted!");
         setPendingUsers((prev) => prev.filter((u) => u.id !== userId));
       }

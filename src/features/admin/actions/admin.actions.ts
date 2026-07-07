@@ -63,17 +63,22 @@ export async function approveUser(userId: string) {
     return { error: error.message };
   }
 
-  // Fetch target user's profile to send email notification
+  // Fetch target user's profile to send email notification and update app_metadata
   const { data: targetProfile } = await supabase
     .from("profiles")
-    .select("email, full_name")
+    .select("email, full_name, role")
     .eq("id", userId)
     .single();
+
+  if (targetProfile?.role) {
+    await adminClient.auth.admin.updateUserById(userId, {
+      app_metadata: { user_role: targetProfile.role }
+    });
+  }
 
   if (targetProfile?.email) {
     try {
       // Trigger Supabase's native email system to send a Magic Link
-      const adminClient = createAdminClient();
       await adminClient.auth.signInWithOtp({
         email: targetProfile.email,
         options: {
@@ -175,7 +180,8 @@ export async function updateUserRole(targetUserId: string, newRole: "user" | "ad
     return { error: "Only Super Admins can change user roles." };
   }
 
-  const { error } = await supabase
+  const adminClient = createAdminClient();
+  const { error } = await adminClient
     .from("profiles")
     .update({ role: newRole })
     .eq("id", targetUserId);
@@ -183,6 +189,10 @@ export async function updateUserRole(targetUserId: string, newRole: "user" | "ad
   if (error) {
     return { error: error.message };
   }
+
+  await adminClient.auth.admin.updateUserById(targetUserId, {
+    app_metadata: { user_role: newRole }
+  });
 
   revalidatePath("/admin/users");
   return { success: true };

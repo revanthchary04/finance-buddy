@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   BadgeCheck,
   Bell,
@@ -32,16 +33,41 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-export function NavUser() {
+export function NavUser({ 
+  user: initialUser, 
+  profile: initialProfile 
+}: { 
+  user?: any; 
+  profile?: any; 
+} = {}) {
   const { isMobile } = useSidebar();
-  const { user, profile } = useAuth();
+  const auth = useAuth();
   const [isPending, startTransition] = React.useTransition();
 
-  if (!user || !profile) return null;
+  const user = initialUser || auth.user;
+  const profile = initialProfile || auth.profile;
 
-  const initials = profile.full_name
+  if (!user) return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <SidebarMenuButton size="lg" disabled>
+          <div className="h-8 w-8 rounded-lg bg-muted animate-pulse" />
+          <div className="flex-1 space-y-1">
+            <div className="h-3 w-24 bg-muted animate-pulse rounded" />
+            <div className="h-2 w-32 bg-muted animate-pulse rounded" />
+          </div>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </SidebarMenu>
+  );
+
+  const fullName = profile?.full_name || "User";
+  const avatarUrl = profile?.avatar_url || "";
+  const email = user.email || "";
+
+  const initials = profile?.full_name
     ? profile.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase()
-    : user.email?.substring(0, 2).toUpperCase();
+    : email.substring(0, 2).toUpperCase();
 
   return (
     <SidebarMenu>
@@ -53,12 +79,12 @@ export function NavUser() {
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarImage src={profile.avatar_url || ""} alt={profile.full_name} />
+                <AvatarImage src={avatarUrl} alt={fullName} />
                 <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">{profile.full_name}</span>
-                <span className="truncate text-xs">{user.email}</span>
+                <span className="truncate font-semibold">{fullName}</span>
+                <span className="truncate text-xs">{email}</span>
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
             </SidebarMenuButton>
@@ -72,24 +98,22 @@ export function NavUser() {
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={profile.avatar_url || ""} alt={profile.full_name} />
+                  <AvatarImage src={avatarUrl} alt={fullName} />
                   <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">{profile.full_name}</span>
-                  <span className="truncate text-xs">{user.email}</span>
+                  <span className="truncate font-semibold">{fullName}</span>
+                  <span className="truncate text-xs">{email}</span>
                 </div>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <BadgeCheck className="mr-2 size-4" />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Bell className="mr-2 size-4" />
-                Notifications
+              <DropdownMenuItem asChild>
+                <Link href="/settings" className="w-full cursor-pointer">
+                  <BadgeCheck className="mr-2 size-4" />
+                  Account
+                </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
