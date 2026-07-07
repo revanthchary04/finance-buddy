@@ -24,6 +24,8 @@ import { updateUserRole, updateUserStatus } from "../actions/admin.actions";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { Search, Shield, ShieldAlert, User as UserIcon, CheckCircle2, XCircle, Clock, Ban } from "lucide-react";
+import { UserRowActions } from "./user-row-actions";
+import { useAuth } from "@/providers/auth-provider";
 
 interface UserProfile {
   id: string;
@@ -32,11 +34,41 @@ interface UserProfile {
   role: "user" | "admin" | "super_admin";
   status: "pending" | "approved" | "rejected" | "suspended";
   created_at: string;
+  last_accessed_at?: string | null;
+}
+
+function formatRelativeTime(dateString?: string | null) {
+  if (!dateString) return "Never";
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  if (diffInSeconds < 60) return 'Just now';
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes === 1 ? '' : 's'} ago`;
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours} hour${diffInHours === 1 ? '' : 's'} ago`;
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays === 1) return 'Yesterday';
+  if (diffInDays < 30) return `${diffInDays} day${diffInDays === 1 ? '' : 's'} ago`;
+  const diffInMonths = Math.floor(diffInDays / 30);
+  if (diffInMonths < 12) return `${diffInMonths} month${diffInMonths === 1 ? '' : 's'} ago`;
+  const diffInYears = Math.floor(diffInDays / 365);
+  return `${diffInYears} year${diffInYears === 1 ? '' : 's'} ago`;
+}
+
+function formatDateJoined(dateString: string) {
+  return new Date(dateString).toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
 }
 
 export function UserManagementTable({ users }: { users: UserProfile[] }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isPending, startTransition] = useTransition();
+  const { user: currentUser } = useAuth();
 
   const filteredUsers = users.filter(
     (u) =>
@@ -150,6 +182,8 @@ export function UserManagementTable({ users }: { users: UserProfile[] }) {
               <TableHead className="w-[300px]">User Account</TableHead>
               <TableHead>Current Role</TableHead>
               <TableHead>Access Status</TableHead>
+              <TableHead>Date Joined</TableHead>
+              <TableHead>Last Active</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -177,6 +211,8 @@ export function UserManagementTable({ users }: { users: UserProfile[] }) {
                   </div>
                 </TableCell>
                 <TableCell>{getStatusBadge(user.status)}</TableCell>
+                <TableCell className="text-muted-foreground">{formatDateJoined(user.created_at)}</TableCell>
+                <TableCell className="text-muted-foreground">{formatRelativeTime(user.last_accessed_at)}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
                     <Select
@@ -209,6 +245,10 @@ export function UserManagementTable({ users }: { users: UserProfile[] }) {
                         <SelectItem value="suspended">Suspend</SelectItem>
                       </SelectContent>
                     </Select>
+
+                    {currentUser && (
+                      <UserRowActions userId={user.id} currentUserId={currentUser.id} userFullName={user.full_name || "Unknown"} />
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
@@ -216,7 +256,7 @@ export function UserManagementTable({ users }: { users: UserProfile[] }) {
 
             {filteredUsers.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} className="h-32 text-center text-muted-foreground">
+                <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
                   No users match your filter criteria.
                 </TableCell>
               </TableRow>

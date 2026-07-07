@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'recharts', '@radix-ui/react-icons', '@supabase/supabase-js']
+  }
 };
 
 export default nextConfig;

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, type LoginFormData } from "../schemas/auth.schema";
@@ -55,8 +56,8 @@ export function LoginForm() {
     <Card className="w-full">
       <CardHeader className="space-y-1">
         <div className="flex justify-center mb-4">
-          <div className="flex aspect-square size-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Wallet className="size-6" />
+          <div className="flex aspect-square size-16 items-center justify-center overflow-hidden bg-transparent">
+            <Image src="/logo.png" alt="Finance Buddy Logo" width={64} height={64} className="object-contain" />
           </div>
         </div>
         <CardTitle className="text-2xl text-center">Welcome back</CardTitle>

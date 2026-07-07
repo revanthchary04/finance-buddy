@@ -4,11 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 import {
   BadgeCheck,
-  Bell,
   ChevronsUpDown,
-  CreditCard,
   LogOut,
-  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/providers/auth-provider";
 import { signOut } from "@/features/auth/actions/auth.actions";

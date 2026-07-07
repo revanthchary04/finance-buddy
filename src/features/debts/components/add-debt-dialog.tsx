@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, CreditCard, Banknote, HelpCircle } from "lucide-react";
+import { Plus } from "lucide-react";
 import { createDebt } from "../actions/debt.actions";
 import { toast } from "sonner";
 import {

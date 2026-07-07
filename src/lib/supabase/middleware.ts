@@ -63,6 +63,12 @@ export async function updateSession(request: NextRequest) {
       .eq('id', user.id)
       .single();
 
+    // Update last accessed time
+    await supabase.from('profiles')
+      .update({ last_accessed_at: new Date().toISOString() })
+      .eq('id', user.id);
+
+
     const status = profile?.status || 'pending';
     const role = profile?.role || 'user';
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -21,7 +21,10 @@ import {
 } from "@/components/ui/select";
 import { createTransaction } from "../actions/transaction.actions";
 import { toast } from "sonner";
-import { Plus, ArrowUpRight, ArrowDownRight, IndianRupee } from "lucide-react";
+import { Plus, ArrowUpRight, ArrowDownRight, IndianRupee, AlertCircle, AlertTriangle } from "lucide-react";
+import { getFinancialSnapshot } from "@/features/warnings/actions/warnings.actions";
+import { calculateWarningLevel, WarningLevel } from "@/features/warnings/utils/financial-warnings";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface Category {
   id: string;
@@ -40,7 +43,29 @@ export function AddTransactionDialog({ categories }: { categories: Category[] })
   const [location, setLocation] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
 
+  const [snapshot, setSnapshot] = useState<any>(null);
+
+  useEffect(() => {
+    if (open && !snapshot) {
+      getFinancialSnapshot().then(setSnapshot);
+    }
+  }, [open, snapshot]);
+
   const filteredCategories = categories.filter((c) => c.type === type);
+
+  // Calculate pre-transaction warning
+  let warning: { level: WarningLevel, message: string, description: string } | null = null;
+  if (type === "expense" && amount && snapshot) {
+    const projectedStats = {
+      ...snapshot,
+      monthly_expenses: snapshot.monthly_expenses + Number(amount),
+      lifetime_savings: snapshot.lifetime_savings - Number(amount)
+    };
+    const projectedWarning = calculateWarningLevel(projectedStats);
+    if (projectedWarning.level) {
+      warning = projectedWarning;
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,6 +168,16 @@ export function AddTransactionDialog({ categories }: { categories: Category[] })
               />
             </div>
           </div>
+
+          {warning && (
+            <Alert className={warning.level === "critical" ? "border-red-500/50 bg-red-500/10 text-red-500" : warning.level === "warning" ? "border-orange-500/50 bg-orange-500/10 text-orange-500" : "border-yellow-500/50 bg-yellow-500/10 text-yellow-500"}>
+              {warning.level === "critical" ? <AlertCircle className="h-4 w-4 text-red-500" /> : <AlertTriangle className="h-4 w-4 text-orange-500" />}
+              <AlertTitle>Financial Risk Warning</AlertTitle>
+              <AlertDescription className="text-foreground">
+                This expense will trigger a {warning.level} warning: <strong>{warning.message}</strong>. {warning.description} Are you sure you want to proceed?
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* Category */}
           <div className="space-y-1.5">

@@ -60,7 +60,8 @@ export async function getAuditLogs() {
       actor_id,
       profiles (
         full_name,
-        email
+        email,
+        role
       )
     `)
     .eq("target_type", "auth")
@@ -76,7 +77,9 @@ export async function getAuditLogs() {
     id: log.id,
     action: log.action,
     created_at: log.created_at,
+    actor_id: log.actor_id,
     user_name: log.profiles?.full_name || "Unknown",
     user_email: log.profiles?.email || "Unknown",
+    user_role: log.profiles?.role || "user",
   }));
 }

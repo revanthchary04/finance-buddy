@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useTransition, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,8 +75,8 @@ export default function ForgotPasswordPage() {
     <Card className="w-full max-w-md">
       <CardHeader className="space-y-1">
         <div className="flex justify-center mb-4">
-          <div className="flex aspect-square size-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Wallet className="size-6" />
+          <div className="flex aspect-square size-16 items-center justify-center overflow-hidden bg-transparent">
+            <Image src="/logo.png" alt="Finance Buddy Logo" width={64} height={64} className="object-contain" />
           </div>
         </div>
         <CardTitle className="text-2xl text-center">Forgot Password</CardTitle>

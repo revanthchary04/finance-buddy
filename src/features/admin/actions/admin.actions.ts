@@ -322,3 +322,49 @@ export async function deleteGlobalCategory(id: string) {
   revalidatePath("/transactions");
   return { success: true };
 }
+
+export async function deleteUser(userId: string) {
+  try {
+    const adminClient = createAdminClient();
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.id === userId) return { error: 'Cannot delete yourself' };
+    
+    // Delete in correct order before auth deletion (manual cascade to prevent foreign key errors)
+    await adminClient.from('audit_log').delete().eq('actor_id', userId);
+    await adminClient.from('savings_contributions').delete().eq('user_id', userId);
+    await adminClient.from('savings_accounts').delete().eq('user_id', userId);
+    await adminClient.from('debt_payments').delete().eq('user_id', userId);
+    await adminClient.from('debts').delete().eq('user_id', userId);
+    await adminClient.from('wishlist').delete().eq('user_id', userId);
+    await adminClient.from('transactions').delete().eq('user_id', userId);
+    await adminClient.from('budgets').delete().eq('user_id', userId);
+    await adminClient.from('feature_requests').delete().eq('user_id', userId);
+    await adminClient.from('profiles').delete().eq('id', userId);
+
+    // Attempt deletion
+    const { error } = await adminClient.auth.admin.deleteUser(userId);
+    if (error) {
+      console.error("Supabase Admin Delete User Error:", error);
+      return { error: error.message };
+    }
+
+    // Attempt audit log for the action itself (actor is the admin deleting the user)
+    if (user) {
+      await adminClient.from('audit_log').insert({
+        actor_id: user.id,
+        action: 'USER_DELETED',
+        target_type: 'user',
+        target_id: userId
+      });
+    }
+    
+    revalidatePath('/admin/users');
+    revalidatePath('/admin/pending');
+    
+    return { success: true };
+  } catch (err: any) {
+    console.error("Unexpected error in deleteUser:", err);
+    return { error: err.message || "An unexpected error occurred" };
+  }
+}

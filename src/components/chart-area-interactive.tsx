@@ -38,44 +38,91 @@ const chartConfig = {
 
 export function ChartAreaInteractive({ transactions = [] }: { transactions?: any[] }) {
   const isMobile = useIsMobile()
-  const [timeRange, setTimeRange] = React.useState("90d")
+  const [timeRange, setTimeRange] = React.useState("all")
 
   React.useEffect(() => {
     if (isMobile) {
-      setTimeRange("7d")
+      setTimeRange("6m")
     }
   }, [isMobile])
 
-  // Aggregate user transactions by date
-  const dateMap: Record<string, { income: number; expense: number }> = {}
+  // Aggregate user transactions by month
+  const monthMap: Record<string, { income: number; expense: number }> = {}
+
+  let minDate = new Date();
+  let maxDate = new Date(0); // Epoch start
 
   transactions.forEach((tx) => {
-    const dateStr = typeof tx.date === "string" ? tx.date.split("T")[0] : new Date(tx.date).toISOString().split("T")[0]
-    if (!dateMap[dateStr]) {
-      dateMap[dateStr] = { income: 0, expense: 0 }
+    const txDate = new Date(tx.date);
+    if (txDate < minDate) minDate = txDate;
+    if (txDate > maxDate) maxDate = txDate;
+
+    // YYYY-MM format
+    const monthStr = txDate.toISOString().slice(0, 7);
+    
+    if (!monthMap[monthStr]) {
+      monthMap[monthStr] = { income: 0, expense: 0 }
     }
     const amt = Number(tx.amount) || 0
     if (tx.type === "income") {
-      dateMap[dateStr].income += amt
+      monthMap[monthStr].income += amt
     } else {
-      dateMap[dateStr].expense += amt
+      monthMap[monthStr].expense += amt
     }
   })
 
-  // Generate zero baseline dates if no data or fill gaps for the time range
-  const daysToInclude = timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : 90
-  const now = new Date()
-  const chartData: { date: string; income: number; expense: number }[] = []
+  // Determine date bounds based on timeRange
+  const now = new Date();
+  let monthsToInclude = 0; // 0 means all time
 
-  for (let i = daysToInclude - 1; i >= 0; i--) {
-    const d = new Date(now)
-    d.setDate(d.getDate() - i)
-    const dateKey = d.toISOString().split("T")[0]
-    chartData.push({
-      date: dateKey,
-      income: dateMap[dateKey]?.income || 0,
-      expense: dateMap[dateKey]?.expense || 0,
-    })
+  if (timeRange === "6m") {
+    monthsToInclude = 6;
+  } else if (timeRange === "1y") {
+    monthsToInclude = 12;
+  }
+
+  // Generate chart data array
+  const chartData: { date: string; income: number; expense: number }[] = []
+  
+  if (monthsToInclude > 0) {
+    // Generate exactly the requested number of months ending in current month
+    for (let i = monthsToInclude - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthKey = d.toISOString().slice(0, 7);
+      chartData.push({
+        date: monthKey,
+        income: monthMap[monthKey]?.income || 0,
+        expense: monthMap[monthKey]?.expense || 0,
+      });
+    }
+  } else {
+    // All time: from the earliest transaction to now
+    if (transactions.length === 0) {
+      // Fallback if no transactions
+      const monthKey = now.toISOString().slice(0, 7);
+      chartData.push({
+        date: monthKey,
+        income: 0,
+        expense: 0,
+      });
+    } else {
+      const startYear = minDate.getFullYear();
+      const startMonth = minDate.getMonth();
+      const endYear = now.getFullYear();
+      const endMonth = now.getMonth();
+
+      const totalMonths = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
+      
+      for (let i = 0; i < totalMonths; i++) {
+        const d = new Date(startYear, startMonth + i, 1);
+        const monthKey = d.toISOString().slice(0, 7);
+        chartData.push({
+          date: monthKey,
+          income: monthMap[monthKey]?.income || 0,
+          expense: monthMap[monthKey]?.expense || 0,
+        });
+      }
+    }
   }
 
   return (
@@ -84,7 +131,7 @@ export function ChartAreaInteractive({ transactions = [] }: { transactions?: any
         <div className="grid flex-1 gap-1 text-center sm:text-left">
           <CardTitle>Cash Flow Trends</CardTitle>
           <CardDescription>
-            Daily income vs. expense performance chart
+            Lifetime monthly income vs. expense performance
           </CardDescription>
         </div>
         <ToggleGroup
@@ -93,14 +140,14 @@ export function ChartAreaInteractive({ transactions = [] }: { transactions?: any
           onValueChange={(val) => val && setTimeRange(val)}
           className="w-full sm:w-auto"
         >
-          <ToggleGroupItem value="90d" aria-label="Toggle 90d">
-            Last 3 months
+          <ToggleGroupItem value="all" aria-label="Toggle All time">
+            All time
           </ToggleGroupItem>
-          <ToggleGroupItem value="30d" aria-label="Toggle 30d">
-            Last 30 days
+          <ToggleGroupItem value="1y" aria-label="Toggle 1y">
+            Last 1 year
           </ToggleGroupItem>
-          <ToggleGroupItem value="7d" aria-label="Toggle 7d">
-            Last 7 days
+          <ToggleGroupItem value="6m" aria-label="Toggle 6m">
+            Last 6 months
           </ToggleGroupItem>
         </ToggleGroup>
       </CardHeader>
@@ -128,10 +175,12 @@ export function ChartAreaInteractive({ transactions = [] }: { transactions?: any
               tickMargin={8}
               minTickGap={32}
               tickFormatter={(value) => {
-                const date = new Date(value)
+                // value is YYYY-MM
+                const [year, month] = value.split("-");
+                const date = new Date(Number(year), Number(month) - 1, 1);
                 return date.toLocaleDateString("en-IN", {
                   month: "short",
-                  day: "numeric",
+                  year: "numeric"
                 })
               }}
             />
@@ -146,9 +195,10 @@ export function ChartAreaInteractive({ transactions = [] }: { transactions?: any
               content={
                 <ChartTooltipContent
                   labelFormatter={(value) => {
-                    return new Date(value).toLocaleDateString("en-IN", {
-                      month: "short",
-                      day: "numeric",
+                    const [year, month] = value.split("-");
+                    const date = new Date(Number(year), Number(month) - 1, 1);
+                    return date.toLocaleDateString("en-IN", {
+                      month: "long",
                       year: "numeric",
                     })
                   }}

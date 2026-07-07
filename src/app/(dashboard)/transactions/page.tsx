@@ -2,10 +2,13 @@ import { getCategories, getTransactions } from "@/features/transactions/actions/
 import { AddTransactionDialog } from "@/features/transactions/components/add-transaction-dialog";
 import { TransactionsTable } from "@/features/transactions/components/transactions-table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Suspense } from "react";
 
 export default async function TransactionsPage() {
-  const transactions = await getTransactions();
-  const categories = await getCategories();
+  const [transactions, categories] = await Promise.all([
+    getTransactions(),
+    getCategories()
+  ]);
 
   return (
     <div className="flex-1 space-y-6">
@@ -31,7 +34,9 @@ export default async function TransactionsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <TransactionsTable transactions={transactions} />
+          <Suspense fallback={<div className="h-64 animate-pulse bg-muted rounded-xl" />}>
+            <TransactionsTable transactions={transactions} />
+          </Suspense>
         </CardContent>
       </Card>
     </div>

@@ -27,11 +27,6 @@ export async function getMonthlyTrend(months: number = 6) {
     return { error: error.message, data: [] };
   }
 
-  const { data: savingsData, error: svError } = await supabase
-    .from("savings")
-    .select("current_amount, month")
-    .eq("user_id", user.id)
-    .gte("month", startDateStr);
 
   // Aggregate by month (e.g., '2026-07')
   const monthlyData: Record<string, { income: number; expense: number; savings: number }> = {};
@@ -49,13 +44,7 @@ export async function getMonthlyTrend(months: number = 6) {
     }
   });
 
-  savingsData?.forEach((sv) => {
-    const monthKey = sv.month.slice(0, 7);
-    if (!monthlyData[monthKey]) {
-      monthlyData[monthKey] = { income: 0, expense: 0, savings: 0 };
-    }
-    monthlyData[monthKey].savings += Number(sv.current_amount) || 0;
-  });
+
 
   // Convert map to array sorted by month
   const result = Object.entries(monthlyData)
@@ -132,18 +121,6 @@ export async function getMonthlySummary(months: number = 1) {
     return { error: txError.message, data: null };
   }
 
-  // Also query savings tables for true net calculations
-  const { data: savings, error: svError } = await supabase
-    .from("savings")
-    .select("current_amount")
-    .eq("user_id", user.id)
-    .gte("month", startDateStr);
-
-  if (svError) {
-    console.error("Error fetching savings for summary:", svError);
-    return { error: svError.message, data: null };
-  }
-
   let totalIncome = 0;
   let totalExpenses = 0;
 
@@ -153,19 +130,15 @@ export async function getMonthlySummary(months: number = 1) {
     else if (tx.type === "expense") totalExpenses += amount;
   });
 
-  let totalSavings = 0;
-  savings?.forEach((s) => {
-    totalSavings += Number(s.current_amount) || 0;
-  });
 
-  const netBalance = totalIncome - totalExpenses - totalSavings;
+
+  const netBalance = totalIncome - totalExpenses;
 
   return {
     success: true,
     data: {
       totalIncome,
       totalExpenses,
-      totalSavings,
       netBalance
     }
   };

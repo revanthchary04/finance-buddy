@@ -53,7 +53,7 @@ export function FinancialAnalytics() {
     loadData();
   }, [months]);
 
-  const { totalIncome, totalExpenses, totalSavings, netBalance } = summaryData;
+  const { totalIncome, totalExpenses, netBalance } = summaryData;
 
   const topCategories = categoryData.slice(0, 5); // Get top 5
 

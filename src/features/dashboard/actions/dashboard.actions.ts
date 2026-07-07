@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { unstable_cache } from "next/cache";
 
 export async function getDashboardStats() {
   const supabase = await createClient();
@@ -8,77 +9,86 @@ export async function getDashboardStats() {
 
   if (!user) return null;
 
-  const now = new Date();
-  const currentMonthStr = now.toISOString().slice(0, 7);
-  const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const lastMonthStr = lastMonthDate.toISOString().slice(0, 7);
+  const db = await createClient();
+  const userId = user.id;
 
-  const { data: txs, error: txError } = await supabase
+  // 1. Fetch ALL transactions ever, no date filter
+  const { data: allTransactions, error: txError } = await db
     .from("transactions")
     .select("amount, type, date")
-    .eq("user_id", user.id);
+    .eq("user_id", userId);
 
-  if (txError) {
-    console.error("Error fetching transactions for stats:", txError);
-    return null;
-  }
+  if (txError) return null;
 
-  const { data: savings, error: svError } = await supabase
-    .from("savings")
-    .select("current_amount, month")
-    .eq("user_id", user.id);
+  const allTimeIncome = allTransactions
+    .filter(t => t.type === "income")
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
-  if (svError) {
-    console.error("Error fetching savings for stats:", svError);
-    return null;
-  }
+  const allTimeExpenses = allTransactions
+    .filter(t => t.type === "expense")
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
-  let currentIncome = 0, currentExpenses = 0, currentTxCount = 0;
-  let lastIncome = 0, lastExpenses = 0, lastTxCount = 0;
+  // Fetch total savings pool
+  const { data: savingsAccounts } = await db
+    .from('savings_accounts')
+    .select('balance')
+    .eq('user_id', userId);
 
-  txs?.forEach(tx => {
-    const txMonth = tx.date.slice(0, 7);
-    const amt = Number(tx.amount) || 0;
-    if (txMonth === currentMonthStr) {
-      currentTxCount++;
-      if (tx.type === "income") currentIncome += amt;
-      else currentExpenses += amt;
-    } else if (txMonth === lastMonthStr) {
-      lastTxCount++;
-      if (tx.type === "income") lastIncome += amt;
-      else lastExpenses += amt;
+  const totalSavingsPool = savingsAccounts?.reduce((sum, s) => sum + Number(s.balance), 0) || 0;
+
+  // Update Lifetime Savings — subtract savings contributions
+  const lifetimeSavings = allTimeIncome - allTimeExpenses - totalSavingsPool;
+
+  // 2. True Net Worth (Assets view)
+  const { data: debts } = await db
+    .from('debts')
+    .select('current_balance')
+    .eq('user_id', userId)
+    .eq('status', 'active');
+    
+  const totalDebt = debts?.reduce((sum, d) => sum + Number(d.current_balance), 0) || 0;
+
+  const { data: wishlistItems } = await db
+    .from('wishlist')
+    .select('current_amount, status')
+    .eq('user_id', userId);
+
+  let allTimeWishlist = 0;
+  wishlistItems?.forEach(item => {
+    if (item.status !== 'cancelled') {
+      allTimeWishlist += Number(item.current_amount) || 0;
     }
   });
 
-  let currentSavings = 0, lastSavings = 0;
-  savings?.forEach(s => {
-    const sMonth = s.month.slice(0, 7);
-    if (sMonth === currentMonthStr) currentSavings += Number(s.current_amount) || 0;
-    else if (sMonth === lastMonthStr) lastSavings += Number(s.current_amount) || 0;
-  });
+  // Update True Net Worth — savings pool is an asset
+  const trueNetWorth = lifetimeSavings + totalSavingsPool + allTimeWishlist - totalDebt;
 
-  const currentNetBalance = currentIncome - currentExpenses - currentSavings;
-  const lastNetBalance = lastIncome - lastExpenses - lastSavings;
+  // 3. Monthly snapshot (context only)
+  const now = new Date();
+  const currentMonthStr = now.toISOString().slice(0, 7);
 
-  const calculatePct = (current: number, previous: number) => {
-    if (previous === 0) return "+0%";
-    const pct = ((current - previous) / previous) * 100;
-    return `${pct > 0 ? "+" : ""}${pct.toFixed(1)}%`;
-  };
+  const monthlyIncome = allTransactions
+    .filter(t => t.type === 'income' && t.date?.toString().slice(0, 7) === currentMonthStr)
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
+  const monthlyExpenses = allTransactions
+    .filter(t => t.type === 'expense' && t.date?.toString().slice(0, 7) === currentMonthStr)
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+  const monthlyNet = monthlyIncome - monthlyExpenses;
+
+  // 4. Return new object shape
   return {
-    total_income: currentIncome,
-    total_expenses: currentExpenses,
-    net_balance: currentNetBalance,
-    total_savings: currentSavings,
-    transaction_count: currentTxCount,
-    percentages: {
-      income: calculatePct(currentIncome, lastIncome),
-      expenses: calculatePct(currentExpenses, lastExpenses),
-      net: calculatePct(currentNetBalance, lastNetBalance),
-      savings: calculatePct(currentSavings, lastSavings),
-      transactions: calculatePct(currentTxCount, lastTxCount)
-    }
+    lifetime_savings: lifetimeSavings,
+    true_net_worth: trueNetWorth,
+    all_time_income: allTimeIncome,
+    all_time_expenses: allTimeExpenses,
+    monthly_income: monthlyIncome,
+    monthly_expenses: monthlyExpenses,
+    monthly_net: monthlyNet,
+    total_debt: totalDebt,
+    transaction_count: allTransactions.length,
+    total_savings_pool: totalSavingsPool,
   };
 }
 

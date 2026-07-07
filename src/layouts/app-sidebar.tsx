@@ -2,12 +2,12 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { navigationConfig } from "@/config/navigation";
 import { useAuth } from "@/providers/auth-provider";
 import { getPendingUsers } from "@/features/admin/actions/admin.actions";
 import { Badge } from "@/components/ui/badge";
-import { QuickApproveDialog } from "@/features/admin/components/quick-approve-dialog";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Sidebar,
@@ -23,7 +23,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { NavUser } from "./nav-user";
-import { Wallet, Sparkles } from "lucide-react";
+import { Wallet, Sparkles, BookOpen } from "lucide-react";
 
 export function AppSidebar({
   initialProfile,
@@ -37,7 +37,6 @@ export function AppSidebar({
   const { profile: clientProfile, user: clientUser } = useAuth();
 
   const profile = initialProfile || clientProfile;
-  const user = initialUser || clientUser;
   const role = profile?.role === "admin" || profile?.role === "super_admin" ? "admin" : "user";
   const navItems = navigationConfig[role] || navigationConfig.user;
 
@@ -64,8 +63,8 @@ export function AppSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/dashboard">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                  <Wallet className="size-4" />
+                <div className="flex aspect-square size-8 items-center justify-center overflow-hidden bg-transparent">
+                  <Image src="/logo.png" alt="Finance Buddy Logo" width={32} height={32} className="object-contain" />
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
                   <span className="font-semibold">Finance Buddy</span>
@@ -104,6 +103,14 @@ export function AppSidebar({
                   <Link href="/feature-requests">
                     <Sparkles />
                     <span>Feature Requests</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname?.startsWith("/docs")}>
+                  <Link href="/docs">
+                    <BookOpen />
+                    <span>Documentation</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
