@@ -1,11 +1,21 @@
 "use client";
 
 import * as React from "react";
-import { useTransition, useState, useEffect } from "react";
+import { useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { resetPasswordSchema, type ResetPasswordFormData } from "@/features/auth/schemas/auth.schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import {
   Card,
   CardContent,
@@ -19,13 +29,9 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function ResetPasswordPage() {
   const [isPending, startTransition] = useTransition();
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  
   const router = useRouter();
   const supabase = createClient();
 
-  // Ensure user has valid session from the recovery link before showing form
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
@@ -35,21 +41,18 @@ export default function ResetPasswordPage() {
     });
   }, [router, supabase.auth]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password !== confirmPassword) {
-      toast.error("Passwords do not match");
-      return;
-    }
+  const form = useForm<ResetPasswordFormData>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: {
+      password: "",
+      confirmPassword: "",
+    },
+  });
 
-    if (password.length < 8) {
-      toast.error("Password must be at least 8 characters");
-      return;
-    }
-
+  function onSubmit(data: ResetPasswordFormData) {
     startTransition(async () => {
       const { error } = await supabase.auth.updateUser({
-        password: password
+        password: data.password
       });
 
       if (error) {
@@ -59,50 +62,58 @@ export default function ResetPasswordPage() {
         router.push("/dashboard");
       }
     });
-  };
+  }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="space-y-1">
-        <div className="flex justify-center mb-4">
-          <div className="flex aspect-square size-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <LockKeyhole className="size-6" />
+    <div className="flex items-center justify-center min-h-[80vh]">
+      <Card className="w-full max-w-md mx-auto">
+        <CardHeader className="space-y-1">
+          <div className="flex justify-center mb-4">
+            <div className="flex aspect-square size-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <LockKeyhole className="size-6" />
+            </div>
           </div>
-        </div>
-        <CardTitle className="text-2xl text-center">Reset Password</CardTitle>
-        <CardDescription className="text-center">
-          Enter your new password below.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="password">New Password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              placeholder="••••••••"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={isPending}>
-            {isPending ? "Updating password..." : "Update Password"}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+          <CardTitle className="text-2xl text-center">Reset password</CardTitle>
+          <CardDescription className="text-center">
+            Enter your new password below
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>New Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="••••••••" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirm Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="••••••••" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="w-full mt-2" disabled={isPending}>
+                {isPending ? "Updating password..." : "Update password"}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

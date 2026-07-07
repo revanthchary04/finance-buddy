@@ -38,7 +38,6 @@ export function AddTransactionDialog({ categories }: { categories: Category[] })
   const [categoryId, setCategoryId] = useState("");
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
-  const [notes, setNotes] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
 
   const filteredCategories = categories.filter((c) => c.type === type);
@@ -61,16 +60,6 @@ export function AddTransactionDialog({ categories }: { categories: Category[] })
       return;
     }
 
-    if (!location.trim()) {
-      toast.error("Please enter a location");
-      return;
-    }
-
-    if (!notes.trim()) {
-      toast.error("Please enter notes");
-      return;
-    }
-
     startTransition(async () => {
       const res = await createTransaction({
         amount: Number(amount),
@@ -78,7 +67,6 @@ export function AddTransactionDialog({ categories }: { categories: Category[] })
         category_id: categoryId,
         description,
         location,
-        notes,
         date,
       });
 
@@ -90,7 +78,6 @@ export function AddTransactionDialog({ categories }: { categories: Category[] })
         setAmount("");
         setDescription("");
         setLocation("");
-        setNotes("");
       }
     });
   };
@@ -141,7 +128,7 @@ export function AddTransactionDialog({ categories }: { categories: Category[] })
 
           {/* Amount */}
           <div className="space-y-1.5">
-            <Label htmlFor="amount" className="text-xs font-medium">Amount (₹)</Label>
+            <Label htmlFor="amount" className="text-xs font-medium">Amount (₹) <span className="text-red-500">*</span></Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-semibold">₹</span>
               <Input
@@ -176,7 +163,7 @@ export function AddTransactionDialog({ categories }: { categories: Category[] })
 
           {/* Description */}
           <div className="space-y-1.5">
-            <Label htmlFor="description" className="text-xs font-medium">Description</Label>
+            <Label htmlFor="description" className="text-xs font-medium">Description <span className="text-red-500">*</span></Label>
             <Input
               id="description"
               placeholder="e.g. Grocery shopping, Salary payout"
@@ -187,35 +174,20 @@ export function AddTransactionDialog({ categories }: { categories: Category[] })
             />
           </div>
 
-          {/* Location */}
           <div className="space-y-1.5">
-            <Label htmlFor="location" className="text-xs font-medium">Location</Label>
+            <Label htmlFor="location" className="text-xs font-medium">Location <span className="text-muted-foreground font-normal">(Optional)</span></Label>
             <Input
               id="location"
               placeholder="e.g. New York, Online"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               className="bg-background/50"
-              required
-            />
-          </div>
-
-          {/* Notes */}
-          <div className="space-y-1.5">
-            <Label htmlFor="notes" className="text-xs font-medium">Notes</Label>
-            <Input
-              id="notes"
-              placeholder="Additional details..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="bg-background/50"
-              required
             />
           </div>
 
           {/* Date */}
           <div className="space-y-1.5">
-            <Label htmlFor="date" className="text-xs font-medium">Date</Label>
+            <Label htmlFor="date" className="text-xs font-medium">Date <span className="text-red-500">*</span></Label>
             <Input
               id="date"
               type="date"

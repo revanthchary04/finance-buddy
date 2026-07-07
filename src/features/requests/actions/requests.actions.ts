@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 
-export async function createFeatureRequest(data: { title: string; description: string; reference_links?: string[] }) {
+export async function createFeatureRequest(data: { title: string; description: string; reference_links?: string[]; request_type: string }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -15,6 +15,7 @@ export async function createFeatureRequest(data: { title: string; description: s
     title: data.title,
     description: data.description,
     reference_links: data.reference_links || [],
+    request_type: data.request_type,
     status: 'pending'
   });
 

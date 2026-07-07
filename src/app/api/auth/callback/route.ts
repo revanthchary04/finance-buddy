@@ -6,6 +6,8 @@ export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
 
+  const next = requestUrl.searchParams.get('next');
+
   if (code) {
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -30,9 +32,24 @@ export async function GET(request: Request) {
         },
       }
     );
-    await supabase.auth.exchangeCodeForSession(code);
+    const { data: { session } } = await supabase.auth.exchangeCodeForSession(code);
+
+    if (session?.user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('status')
+        .eq('id', session.user.id)
+        .single();
+
+      if (!profile || profile.status === 'pending') {
+        return NextResponse.redirect(new URL('/pending-approval', request.url));
+      }
+      if (profile.status === 'rejected') {
+        return NextResponse.redirect(new URL('/login?error=rejected', request.url));
+      }
+    }
   }
 
   // URL to redirect to after sign in process completes
-  return NextResponse.redirect(new URL('/pending-approval', request.url));
+  return NextResponse.redirect(new URL(next || '/dashboard', request.url));
 }

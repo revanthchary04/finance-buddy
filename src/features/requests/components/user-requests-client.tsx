@@ -18,9 +18,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export function UserFeatureRequestsClient({ initialRequests }: { initialRequests: any[] }) {
   const [open, setOpen] = useState(false);
+  const [requestType, setRequestType] = useState("feature");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [referenceLinks, setReferenceLinks] = useState<string[]>([""]);
@@ -46,7 +48,7 @@ export function UserFeatureRequestsClient({ initialRequests }: { initialRequests
     const cleanLinks = referenceLinks.filter(l => l.trim() !== "");
 
     startTransition(async () => {
-      const res = await createFeatureRequest({ title, description, reference_links: cleanLinks });
+      const res = await createFeatureRequest({ title, description, reference_links: cleanLinks, request_type: requestType });
       if (res.error) {
         toast.error(res.error);
       } else {
@@ -54,6 +56,7 @@ export function UserFeatureRequestsClient({ initialRequests }: { initialRequests
         setOpen(false);
         setTitle("");
         setDescription("");
+        setRequestType("feature");
         setReferenceLinks([""]);
       }
     });
@@ -95,6 +98,18 @@ export function UserFeatureRequestsClient({ initialRequests }: { initialRequests
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+              <div className="space-y-2">
+                <Label>Type</Label>
+                <Select value={requestType} onValueChange={setRequestType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="feature">Feature</SelectItem>
+                    <SelectItem value="bug">Bug</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="title">Feature Title <span className="text-rose-500">*</span></Label>
                 <Input
@@ -164,7 +179,14 @@ export function UserFeatureRequestsClient({ initialRequests }: { initialRequests
             <Card key={req.id} className="relative overflow-hidden group flex flex-col">
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start gap-4">
-                  <CardTitle className="text-base font-semibold leading-tight">{req.title}</CardTitle>
+                  <div>
+                    {req.request_type === 'bug' ? (
+                      <Badge variant="outline" className="text-rose-500 border-rose-500/30 bg-rose-500/10 mb-2">Bug</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-purple-500 border-purple-500/30 bg-purple-500/10 mb-2">Feature</Badge>
+                    )}
+                    <CardTitle className="text-base font-semibold leading-tight">{req.title}</CardTitle>
+                  </div>
                   {getStatusBadge(req.status)}
                 </div>
                 <CardDescription className="text-xs">

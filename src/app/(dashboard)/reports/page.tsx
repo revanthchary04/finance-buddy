@@ -1,9 +1,6 @@
-import { getTransactions } from "@/features/transactions/actions/transaction.actions";
 import { FinancialAnalytics } from "@/features/reports/components/financial-analytics";
 
-export default async function ReportsPage() {
-  const transactions = await getTransactions();
-
+export default function ReportsPage() {
   return (
     <div className="flex-1 space-y-6">
       {/* Header */}
@@ -17,7 +14,7 @@ export default async function ReportsPage() {
       </div>
 
       {/* Analytics Charts */}
-      <FinancialAnalytics transactions={transactions} />
+      <FinancialAnalytics />
     </div>
   );
 }

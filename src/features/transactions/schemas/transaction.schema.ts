@@ -6,9 +6,8 @@ export const transactionSchema = z.object({
   type: z.enum(["income", "expense"]),
   category_id: z.string().uuid("Please select a category"),
   date: z.string().or(z.date()),
-  location: z.string().min(1, "Location is required"),
+  location: z.string().optional(),
   description: z.string().min(1, "Description is required"),
-  notes: z.string().min(1, "Notes are required"),
 });
 
 export type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -23,7 +22,6 @@ export type Transaction = {
   date: string;
   location: string | null;
   payment_method: string | null;
-  notes: string | null;
   created_at: string;
   updated_at: string;
   categories?: {

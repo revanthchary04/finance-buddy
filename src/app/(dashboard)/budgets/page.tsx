@@ -1,11 +1,14 @@
 import { getBudgets } from "@/features/budgets/actions/budget.actions";
 import { getCategories } from "@/features/transactions/actions/transaction.actions";
+import { getSavings } from "@/features/savings/actions/savings.actions";
 import { AddBudgetDialog } from "@/features/budgets/components/add-budget-dialog";
 import { BudgetCardList } from "@/features/budgets/components/budget-card-list";
+import { SavingsSection } from "@/features/savings/components/savings-section";
 
 export default async function BudgetsPage() {
   const budgets = await getBudgets();
   const categories = await getCategories();
+  const savings = await getSavings();
 
   return (
     <div className="flex-1 space-y-6">
@@ -24,6 +27,9 @@ export default async function BudgetsPage() {
 
       {/* Cards List */}
       <BudgetCardList budgets={budgets} />
+
+      {/* Savings Section */}
+      <SavingsSection savings={savings} />
     </div>
   );
 }

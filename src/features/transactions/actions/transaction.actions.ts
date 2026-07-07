@@ -65,7 +65,6 @@ export async function createTransaction(data: any) {
     date: typeof result.data.date === "string" ? result.data.date : result.data.date.toISOString().split("T")[0],
     description: result.data.description,
     location: result.data.location,
-    notes: result.data.notes,
   });
 
   if (error) {

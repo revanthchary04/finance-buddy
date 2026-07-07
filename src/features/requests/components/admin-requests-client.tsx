@@ -76,7 +76,14 @@ export function AdminFeatureRequestsClient({ initialRequests }: { initialRequest
                 <TableCell className="font-medium">
                   {req.profiles?.full_name || req.profiles?.email || "Unknown"}
                 </TableCell>
-                <TableCell className="font-semibold">{req.title}</TableCell>
+                <TableCell className="font-semibold">
+                  {req.request_type === 'bug' ? (
+                    <Badge variant="outline" className="text-rose-500 border-rose-500/30 bg-rose-500/10 mb-1 mr-2 px-1 py-0 text-[10px]">Bug</Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-purple-500 border-purple-500/30 bg-purple-500/10 mb-1 mr-2 px-1 py-0 text-[10px]">Feature</Badge>
+                  )}
+                  {req.title}
+                </TableCell>
                 <TableCell>
                   <p className="text-sm text-muted-foreground line-clamp-3" title={req.description}>
                     {req.description}
