@@ -44,7 +44,19 @@ function formatDuration(start: string, end: string) {
   return formatDistanceStrict(new Date(start), new Date(end));
 }
 
-export function LogsClient({ initialLogs }: { initialLogs: RawLog[] }) {
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+
+export function LogsClient({ 
+  initialLogs, 
+  totalPages, 
+  currentPage 
+}: { 
+  initialLogs: RawLog[], 
+  totalPages: number, 
+  currentPage: number 
+}) {
+  const router = useRouter();
   const [roleFilter, setRoleFilter] = React.useState("all");
 
   const sessions = React.useMemo(() => {
@@ -201,6 +213,28 @@ export function LogsClient({ initialLogs }: { initialLogs: RawLog[] }) {
           </TableBody>
         </Table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between py-2">
+          <Button
+            variant="outline"
+            disabled={currentPage <= 1}
+            onClick={() => router.push(`?page=${currentPage - 1}`)}
+          >
+            Previous
+          </Button>
+          <div className="text-sm text-muted-foreground">
+            Page {currentPage} of {totalPages}
+          </div>
+          <Button
+            variant="outline"
+            disabled={currentPage >= totalPages}
+            onClick={() => router.push(`?page=${currentPage + 1}`)}
+          >
+            Next
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

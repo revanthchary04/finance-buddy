@@ -76,11 +76,6 @@ export function SettingsForm({ profile }: { profile: any }) {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!phoneNumber.trim()) {
-      toast.error("Phone number is required");
-      return;
-    }
-
     startTransition(async () => {
       const res = await updateProfile({
         full_name: fullName,
@@ -167,14 +162,13 @@ export function SettingsForm({ profile }: { profile: any }) {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="phone">Phone Number <span className="text-rose-500">*</span></Label>
+                <Label htmlFor="phone">Phone Number</Label>
                 <Input
                   id="phone"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   className="bg-background/50"
                   placeholder="+91 99999 99999"
-                  required
                 />
                 <p className="text-[11px] text-muted-foreground mt-1">Please include your country dial code.</p>
               </div>

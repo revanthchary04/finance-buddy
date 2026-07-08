@@ -36,120 +36,148 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
+const filters = [
+  { label: 'Last 3 months', id: '3M' },
+  { label: 'Last 6 months', id: '6M' },
+  { label: 'Last 12 months', id: '12M' },
+  { label: 'This Year', id: 'YTD' },
+  { label: 'Custom', id: 'CUSTOM' },
+]
+
 export function ChartAreaInteractive({ transactions = [] }: { transactions?: any[] }) {
   const isMobile = useIsMobile()
-  const [timeRange, setTimeRange] = React.useState("all")
+  const [activeFilter, setActiveFilter] = React.useState<string>("3M")
+  const [customStart, setCustomStart] = React.useState(() => {
+    const d = new Date(); d.setMonth(d.getMonth() - 6); return d.toISOString().slice(0, 7);
+  });
+  const [customEnd, setCustomEnd] = React.useState(() => new Date().toISOString().slice(0, 7));
 
-  React.useEffect(() => {
-    if (isMobile) {
-      setTimeRange("6m")
-    }
-  }, [isMobile])
+  const dataMap: Record<string, { income: number; expense: number }> = {}
 
-  // Aggregate user transactions by month
-  const monthMap: Record<string, { income: number; expense: number }> = {}
-
+  let maxDate = new Date();
   let minDate = new Date();
-  let maxDate = new Date(0); // Epoch start
 
+  // Determine start/end dates based on filter
+  if (activeFilter === "3M") {
+    minDate.setMonth(maxDate.getMonth() - 2);
+  } else if (activeFilter === "6M") {
+    minDate.setMonth(maxDate.getMonth() - 5);
+  } else if (activeFilter === "12M") {
+    minDate.setMonth(maxDate.getMonth() - 11);
+  } else if (activeFilter === "YTD") {
+    minDate = new Date(maxDate.getFullYear(), 0, 1);
+  } else if (activeFilter === "CUSTOM") {
+    minDate = new Date(customStart + "-01");
+    maxDate = new Date(customEnd + "-01");
+  }
+
+  // Ensure they are start of month
+  minDate.setDate(1);
+  minDate.setHours(0, 0, 0, 0);
+
+  // For transactions, we filter anything before minDate, and for CUSTOM, anything after maxDate month end
   transactions.forEach((tx) => {
     const txDate = new Date(tx.date);
-    if (txDate < minDate) minDate = txDate;
-    if (txDate > maxDate) maxDate = txDate;
-
-    // YYYY-MM format
-    const monthStr = txDate.toISOString().slice(0, 7);
+    if (txDate < minDate) return;
     
-    if (!monthMap[monthStr]) {
-      monthMap[monthStr] = { income: 0, expense: 0 }
+    if (activeFilter === "CUSTOM") {
+      const endMonthEnd = new Date(maxDate.getFullYear(), maxDate.getMonth() + 1, 0, 23, 59, 59);
+      if (txDate > endMonthEnd) return;
+    }
+
+    const dateStr = txDate.toISOString().slice(0, 7);
+    
+    if (!dataMap[dateStr]) {
+      dataMap[dateStr] = { income: 0, expense: 0 }
     }
     const amt = Number(tx.amount) || 0
     if (tx.type === "income") {
-      monthMap[monthStr].income += amt
-    } else {
-      monthMap[monthStr].expense += amt
+      dataMap[dateStr].income += amt
+    } else if (tx.type === "expense") {
+      dataMap[dateStr].expense += amt
     }
   })
 
-  // Determine date bounds based on timeRange
-  const now = new Date();
-  let monthsToInclude = 0; // 0 means all time
-
-  if (timeRange === "6m") {
-    monthsToInclude = 6;
-  } else if (timeRange === "1y") {
-    monthsToInclude = 12;
-  }
-
-  // Generate chart data array
+  // Generate chart data array, filling in gaps
   const chartData: { date: string; income: number; expense: number }[] = []
   
-  if (monthsToInclude > 0) {
-    // Generate exactly the requested number of months ending in current month
-    for (let i = monthsToInclude - 1; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthKey = d.toISOString().slice(0, 7);
+  const startYear = minDate.getFullYear();
+  const startMonth = minDate.getMonth();
+  const endYear = maxDate.getFullYear();
+  const endMonth = maxDate.getMonth();
+
+  const totalMonths = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
+  
+  if (totalMonths > 0) {
+    for (let i = 0; i < totalMonths; i++) {
+      const d = new Date(startYear, startMonth + i, 1);
+      // Because timezone might shift the month down a day, use local year/month to format manually
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const monthKey = `${yyyy}-${mm}`;
+      
       chartData.push({
         date: monthKey,
-        income: monthMap[monthKey]?.income || 0,
-        expense: monthMap[monthKey]?.expense || 0,
+        income: dataMap[monthKey]?.income || 0,
+        expense: dataMap[monthKey]?.expense || 0,
       });
     }
   } else {
-    // All time: from the earliest transaction to now
-    if (transactions.length === 0) {
-      // Fallback if no transactions
-      const monthKey = now.toISOString().slice(0, 7);
-      chartData.push({
-        date: monthKey,
-        income: 0,
-        expense: 0,
-      });
-    } else {
-      const startYear = minDate.getFullYear();
-      const startMonth = minDate.getMonth();
-      const endYear = now.getFullYear();
-      const endMonth = now.getMonth();
-
-      const totalMonths = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
-      
-      for (let i = 0; i < totalMonths; i++) {
-        const d = new Date(startYear, startMonth + i, 1);
-        const monthKey = d.toISOString().slice(0, 7);
-        chartData.push({
-          date: monthKey,
-          income: monthMap[monthKey]?.income || 0,
-          expense: monthMap[monthKey]?.expense || 0,
-        });
-      }
-    }
+    // Fallback if invalid custom range
+    const yyyy = maxDate.getFullYear();
+    const mm = String(maxDate.getMonth() + 1).padStart(2, '0');
+    chartData.push({
+      date: `${yyyy}-${mm}`,
+      income: 0,
+      expense: 0,
+    });
   }
 
   return (
     <Card className="@container/main border-0 bg-transparent shadow-none">
-      <CardHeader className="flex flex-col gap-4 border-b py-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="grid flex-1 gap-1 text-center sm:text-left">
+      <CardHeader className="flex flex-col gap-4 border-b py-5 md:flex-row md:items-start md:justify-between">
+        <div className="grid flex-1 gap-1 text-center md:text-left">
           <CardTitle>Cash Flow Trends</CardTitle>
           <CardDescription>
-            Lifetime monthly income vs. expense performance
+            Monthly income vs. expense performance
           </CardDescription>
         </div>
-        <ToggleGroup
-          type="single"
-          value={timeRange}
-          onValueChange={(val) => val && setTimeRange(val)}
-          className="w-full sm:w-auto"
-        >
-          <ToggleGroupItem value="all" aria-label="Toggle All time">
-            All time
-          </ToggleGroupItem>
-          <ToggleGroupItem value="1y" aria-label="Toggle 1y">
-            Last 1 year
-          </ToggleGroupItem>
-          <ToggleGroupItem value="6m" aria-label="Toggle 6m">
-            Last 6 months
-          </ToggleGroupItem>
-        </ToggleGroup>
+        <div className="flex flex-col items-center md:items-end gap-3">
+          <ToggleGroup
+            type="single"
+            value={activeFilter}
+            onValueChange={(val) => val && setActiveFilter(val)}
+            className="w-full sm:w-auto flex-wrap justify-center sm:justify-end bg-muted/30 p-1 rounded-lg"
+          >
+            {filters.map((filter) => (
+              <ToggleGroupItem 
+                key={filter.id} 
+                value={filter.id} 
+                aria-label={`Toggle ${filter.label}`}
+                className="text-xs px-3 h-8 data-[state=on]:bg-background data-[state=on]:shadow-sm"
+              >
+                {filter.label}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+          {activeFilter === "CUSTOM" && (
+            <div className="flex items-center gap-2 animate-in slide-in-from-top-2 fade-in">
+              <input 
+                type="month" 
+                value={customStart} 
+                onChange={e => setCustomStart(e.target.value)} 
+                className="h-8 rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+              <span className="text-muted-foreground text-xs">to</span>
+              <input 
+                type="month" 
+                value={customEnd} 
+                onChange={e => setCustomEnd(e.target.value)} 
+                className="h-8 rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+            </div>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
         <ChartContainer
@@ -175,13 +203,12 @@ export function ChartAreaInteractive({ transactions = [] }: { transactions?: any
               tickMargin={8}
               minTickGap={32}
               tickFormatter={(value) => {
-                // value is YYYY-MM
                 const [year, month] = value.split("-");
                 const date = new Date(Number(year), Number(month) - 1, 1);
                 return date.toLocaleDateString("en-IN", {
                   month: "short",
                   year: "numeric"
-                })
+                });
               }}
             />
             <YAxis
@@ -200,7 +227,7 @@ export function ChartAreaInteractive({ transactions = [] }: { transactions?: any
                     return date.toLocaleDateString("en-IN", {
                       month: "long",
                       year: "numeric",
-                    })
+                    });
                   }}
                   indicator="dot"
                 />

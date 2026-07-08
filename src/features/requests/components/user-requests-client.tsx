@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, MessageSquarePlus, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Plus, MessageSquarePlus, Clock, CheckCircle2, XCircle, Search, SearchCheck, Loader2, Sparkles, MessageSquare } from "lucide-react";
 import { createFeatureRequest } from "../actions/requests.actions";
+import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -64,14 +65,16 @@ export function UserFeatureRequestsClient({ initialRequests }: { initialRequests
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "pending":
-        return <Badge variant="outline" className="text-muted-foreground"><Clock className="mr-1 h-3 w-3" /> Sent</Badge>;
-      case "in_review":
-        return <Badge variant="secondary" className="bg-blue-500/10 text-blue-500 hover:bg-blue-500/20"><Clock className="mr-1 h-3 w-3 animate-pulse" /> In Review</Badge>;
-      case "approved":
-        return <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"><CheckCircle2 className="mr-1 h-3 w-3" /> Approved</Badge>;
+      case "under_review":
+        return <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20"><Search className="mr-1 h-3 w-3" /> Under Review</Badge>;
+      case "accepted":
+        return <Badge variant="secondary" className="bg-green-500/10 text-green-500 hover:bg-green-500/20"><SearchCheck className="mr-1 h-3 w-3" /> Accepted</Badge>;
+      case "in_progress":
+        return <Badge variant="secondary" className="bg-blue-500/10 text-blue-500 hover:bg-blue-500/20"><Loader2 className="mr-1 h-3 w-3 animate-spin" /> In Progress</Badge>;
       case "rejected":
-        return <Badge variant="secondary" className="bg-rose-500/10 text-rose-500 hover:bg-rose-500/20"><XCircle className="mr-1 h-3 w-3" /> Rejected</Badge>;
+        return <Badge variant="secondary" className="bg-red-500/10 text-red-500 hover:bg-red-500/20"><XCircle className="mr-1 h-3 w-3" /> Rejected</Badge>;
+      case "completed":
+        return <Badge variant="secondary" className="bg-purple-500/10 text-purple-500 hover:bg-purple-500/20"><Sparkles className="mr-1 h-3 w-3" /> Completed</Badge>;
       default:
         return <Badge>{status}</Badge>;
     }
@@ -209,6 +212,24 @@ export function UserFeatureRequestsClient({ initialRequests }: { initialRequests
                         </li>
                       ))}
                     </ul>
+                  </div>
+                )}
+                {req.feature_request_comments && req.feature_request_comments.length > 0 && (
+                  <div className="mt-4 pt-4 border-t space-y-3">
+                    <p className="text-xs font-semibold text-foreground flex items-center gap-1.5"><MessageSquare className="h-3.5 w-3.5" /> Admin Comments</p>
+                    <div className="space-y-3">
+                      {req.feature_request_comments.map((comment: any) => (
+                        <div key={comment.id} className="bg-muted/50 rounded-lg p-3 text-xs border border-border/50">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="font-semibold text-primary">Admin</span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+                            </span>
+                          </div>
+                          <p className="text-muted-foreground whitespace-pre-wrap">{comment.comment}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </CardContent>

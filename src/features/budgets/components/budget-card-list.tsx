@@ -7,9 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { deleteBudget } from "../actions/budget.actions";
 import { toast } from "sonner";
-import { Trash2, AlertTriangle, PiggyBank, Calendar } from "lucide-react";
+import { Trash2, AlertTriangle, PiggyBank, Calendar, Pencil } from "lucide-react";
+import { AddBudgetDialog } from "./add-budget-dialog";
 
-export function BudgetCardList({ budgets }: { budgets: any[] }) {
+export function BudgetCardList({ budgets, categories }: { budgets: any[], categories: any[] }) {
   const [isPending, startTransition] = useTransition();
 
   const handleDelete = (id: string) => {
@@ -43,15 +44,31 @@ export function BudgetCardList({ budgets }: { budgets: any[] }) {
                     {b.period.toUpperCase()} • {b.categories?.name || "All Expenses"}
                   </p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleDelete(b.id)}
-                  disabled={isPending}
-                  className="h-8 w-8 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <AddBudgetDialog 
+                    categories={categories} 
+                    editData={b} 
+                    trigger={
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={isPending}
+                        className="h-8 w-8 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    } 
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDelete(b.id)}
+                    disabled={isPending}
+                    className="h-8 w-8 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </CardHeader>
 

@@ -14,11 +14,12 @@ import {
 } from "@/components/ui/table";
 import { deleteTransaction } from "../actions/transaction.actions";
 import { toast } from "sonner";
-import { Search, ArrowUpRight, ArrowDownRight, Trash2, Calendar, Tag } from "lucide-react";
+import { Search, ArrowUpRight, ArrowDownRight, Trash2, Calendar, Tag, Pencil, Building2 } from "lucide-react";
+import { AddTransactionDialog } from "./add-transaction-dialog";
 
-export function TransactionsTable({ transactions }: { transactions: any[] }) {
+export function TransactionsTable({ transactions, categories }: { transactions: any[], categories: any[] }) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all");
+  const [filterType, setFilterType] = useState<"all" | "income" | "expense" | "asset">("all");
   const [isPending, startTransition] = useTransition();
 
   const filteredTransactions = transactions.filter((t) => {
@@ -85,19 +86,29 @@ export function TransactionsTable({ transactions }: { transactions: any[] }) {
           >
             Expense
           </button>
+          <button
+            onClick={() => setFilterType("asset")}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+              filterType === "asset"
+                ? "bg-blue-500/15 text-blue-500 border border-blue-500/30"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Asset
+          </button>
         </div>
       </div>
 
       {/* Table Container */}
-      <div className="rounded-xl border border-border/50 overflow-hidden bg-card/40 backdrop-blur-xl">
-        <Table>
+      <div className="rounded-xl border border-border/50 overflow-x-auto w-full bg-card/40 backdrop-blur-xl">
+        <Table className="min-w-[800px]">
           <TableHeader className="bg-muted/40">
             <TableRow className="hover:bg-transparent border-border/50">
-              <TableHead>Type & Description</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
+              <TableHead className="min-w-[230px]">Type & Description</TableHead>
+              <TableHead className="min-w-[120px]">Category</TableHead>
+              <TableHead className="min-w-[100px]">Date</TableHead>
+              <TableHead className="text-right min-w-[100px]">Amount</TableHead>
+              <TableHead className="text-right min-w-[80px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -109,18 +120,22 @@ export function TransactionsTable({ transactions }: { transactions: any[] }) {
                       className={`p-2 rounded-xl flex items-center justify-center ${
                         t.type === "income"
                           ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
-                          : "bg-rose-500/10 text-rose-500 border border-rose-500/20"
+                          : t.type === "expense"
+                          ? "bg-rose-500/10 text-rose-500 border border-rose-500/20"
+                          : "bg-blue-500/10 text-blue-500 border border-blue-500/20"
                       }`}
                     >
                       {t.type === "income" ? (
                         <ArrowUpRight className="h-4 w-4" />
-                      ) : (
+                      ) : t.type === "expense" ? (
                         <ArrowDownRight className="h-4 w-4" />
+                      ) : (
+                        <Building2 className="h-4 w-4" />
                       )}
                     </div>
                     <div className="flex flex-col">
                       <span className="font-semibold text-sm leading-tight text-foreground">
-                        {t.description || (t.type === "income" ? "Income Deposit" : "Expense Payment")}
+                        {t.description || (t.type === "income" ? "Income Deposit" : t.type === "expense" ? "Expense Payment" : "Asset")}
                       </span>
                       <span className="text-[11px] text-muted-foreground capitalize mt-0.5">
                         {t.type}
@@ -145,20 +160,36 @@ export function TransactionsTable({ transactions }: { transactions: any[] }) {
                   </div>
                 </TableCell>
                 <TableCell className="text-right font-bold text-sm">
-                  <span className={t.type === "income" ? "text-emerald-500" : "text-rose-500"}>
-                    {t.type === "income" ? "+" : "-"}₹{Number(t.amount).toLocaleString("en-IN")}
+                  <span className={t.type === "income" ? "text-emerald-500" : t.type === "expense" ? "text-rose-500" : "text-blue-500"}>
+                    {t.type === "income" ? "+" : t.type === "expense" ? "-" : ""}₹{Number(t.amount).toLocaleString("en-IN")}
                   </span>
                 </TableCell>
                 <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(t.id)}
-                    disabled={isPending}
-                    className="h-8 w-8 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <AddTransactionDialog 
+                      categories={categories} 
+                      editData={t} 
+                      trigger={
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={isPending}
+                          className="h-8 w-8 text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      } 
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(t.id)}
+                      disabled={isPending}
+                      className="h-8 w-8 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

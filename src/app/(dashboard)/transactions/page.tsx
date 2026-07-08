@@ -1,6 +1,7 @@
 import { getCategories, getTransactions } from "@/features/transactions/actions/transaction.actions";
 import { AddTransactionDialog } from "@/features/transactions/components/add-transaction-dialog";
 import { TransactionsTable } from "@/features/transactions/components/transactions-table";
+import { ExportDialog } from "@/features/exports/components/export-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Suspense } from "react";
 
@@ -11,7 +12,7 @@ export default async function TransactionsPage() {
   ]);
 
   return (
-    <div className="flex-1 space-y-6">
+    <div className="flex-1 space-y-6 w-full max-w-7xl mx-auto">
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b">
         <div>
@@ -22,7 +23,10 @@ export default async function TransactionsPage() {
             Track and manage all your income deposits and expense payments.
           </p>
         </div>
-        <AddTransactionDialog categories={categories} />
+        <div className="flex items-center gap-3">
+          <ExportDialog />
+          <AddTransactionDialog categories={categories} />
+        </div>
       </div>
 
       {/* Main Table Card */}
@@ -35,7 +39,7 @@ export default async function TransactionsPage() {
         </CardHeader>
         <CardContent>
           <Suspense fallback={<div className="h-64 animate-pulse bg-muted rounded-xl" />}>
-            <TransactionsTable transactions={transactions} />
+            <TransactionsTable transactions={transactions} categories={categories} />
           </Suspense>
         </CardContent>
       </Card>

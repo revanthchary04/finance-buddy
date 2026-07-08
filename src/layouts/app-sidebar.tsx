@@ -62,13 +62,13 @@ export function AppSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href="/dashboard">
-                <div className="flex aspect-square size-8 items-center justify-center overflow-hidden bg-transparent">
+              <Link href="/dashboard" className="flex items-center gap-2">
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg overflow-hidden bg-transparent shrink-0">
                   <Image src="/logo.png" alt="Finance Buddy Logo" width={32} height={32} className="object-contain" />
                 </div>
-                <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-semibold">Finance Buddy</span>
-                  <span className="text-xs text-muted-foreground">Premium Edition</span>
+                <div className="flex flex-col flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden group-data-[state=collapsed]:hidden">
+                  <span className="truncate font-semibold">Finance Buddy</span>
+                  <span className="truncate text-xs text-muted-foreground">Premium Edition</span>
                 </div>
               </Link>
             </SidebarMenuButton>

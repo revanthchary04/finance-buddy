@@ -7,7 +7,7 @@ export default async function DebtsPage() {
   const debts = await getDebts();
 
   return (
-    <div className="flex-1 space-y-6 p-8 pt-6">
+    <div className="flex-1 space-y-6 w-full max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b">
         <div>
           <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">

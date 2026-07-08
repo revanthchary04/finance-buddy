@@ -102,3 +102,27 @@ export async function markAsPurchased(id: string) {
   revalidatePath("/budgets");
   revalidatePath("/dashboard");
 }
+
+export async function updateWishlistItem(id: string, data: WishlistFormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const { error } = await supabase
+    .from("wishlist")
+    .update({
+      name: data.name,
+      description: data.description || null,
+      target_amount: data.target_amount,
+      priority: data.priority,
+      target_date: data.target_date || null,
+      image_url: data.image_url || null,
+    })
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/budgets");
+  revalidatePath("/dashboard");
+}

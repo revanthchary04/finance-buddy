@@ -120,6 +120,13 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    cursor: default;
+  }
+  input, textarea, [contenteditable] {
+    cursor: text;
+  }
+  button, a, [role="button"], [role="tab"], select, option, label {
+    cursor: pointer;
   }
   body {
     @apply bg-background text-foreground;

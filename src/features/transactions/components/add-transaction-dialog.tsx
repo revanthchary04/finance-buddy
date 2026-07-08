@@ -19,11 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createTransaction } from "../actions/transaction.actions";
+import { createTransaction, updateTransaction } from "../actions/transaction.actions";
 import { toast } from "sonner";
-import { Plus, ArrowUpRight, ArrowDownRight, IndianRupee, AlertCircle, AlertTriangle } from "lucide-react";
+import { Plus, ArrowUpRight, ArrowDownRight, IndianRupee, AlertCircle, AlertTriangle, Building2 } from "lucide-react";
 import { getFinancialSnapshot } from "@/features/warnings/actions/warnings.actions";
-import { calculateWarningLevel, WarningLevel } from "@/features/warnings/utils/financial-warnings";
+import { calculateBudgetWarnings, WarningLevel } from "@/features/warnings/utils/financial-warnings";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface Category {
@@ -32,11 +32,11 @@ interface Category {
   type: string;
 }
 
-export function AddTransactionDialog({ categories }: { categories: Category[] }) {
+export function AddTransactionDialog({ categories, editData, trigger }: { categories: Category[], editData?: any, trigger?: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  const [type, setType] = useState<"income" | "expense">("expense");
+  const [type, setType] = useState<"income" | "expense" | "asset">("expense");
   const [amount, setAmount] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [description, setDescription] = useState("");
@@ -51,6 +51,17 @@ export function AddTransactionDialog({ categories }: { categories: Category[] })
     }
   }, [open, snapshot]);
 
+  useEffect(() => {
+    if (open && editData) {
+      setType(editData.type || "expense");
+      setAmount(editData.amount?.toString() || "");
+      setCategoryId(editData.category_id || "");
+      setDescription(editData.description || "");
+      setLocation(editData.location || "");
+      setDate(editData.date ? new Date(editData.date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]);
+    }
+  }, [open, editData]);
+
   const filteredCategories = categories.filter((c) => c.type === type);
 
   // Calculate pre-transaction warning
@@ -61,9 +72,9 @@ export function AddTransactionDialog({ categories }: { categories: Category[] })
       monthly_expenses: snapshot.monthly_expenses + Number(amount),
       lifetime_savings: snapshot.lifetime_savings - Number(amount)
     };
-    const projectedWarning = calculateWarningLevel(projectedStats);
-    if (projectedWarning.level) {
-      warning = projectedWarning;
+    const projectedWarningState = calculateBudgetWarnings([], projectedStats);
+    if (projectedWarningState.fallbackWarning?.level) {
+      warning = projectedWarningState.fallbackWarning;
     }
   }
 
@@ -86,23 +97,29 @@ export function AddTransactionDialog({ categories }: { categories: Category[] })
     }
 
     startTransition(async () => {
-      const res = await createTransaction({
+      const payload = {
         amount: Number(amount),
         type,
         category_id: categoryId,
         description,
         location,
         date,
-      });
+      };
+
+      const res = editData 
+        ? await updateTransaction(editData.id, payload)
+        : await createTransaction(payload);
 
       if (res.error) {
         toast.error(res.error);
       } else {
-        toast.success("Transaction recorded successfully!");
+        toast.success(editData ? "Transaction updated successfully" : "Transaction recorded successfully!");
         setOpen(false);
-        setAmount("");
-        setDescription("");
-        setLocation("");
+        if (!editData) {
+          setAmount("");
+          setDescription("");
+          setLocation("");
+        }
       }
     });
   };
@@ -110,23 +127,25 @@ export function AddTransactionDialog({ categories }: { categories: Category[] })
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-medium shadow-lg shadow-emerald-950/20">
-          <Plus className="mr-2 h-4 w-4" /> Add Transaction
-        </Button>
+        {trigger || (
+          <Button className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-medium shadow-lg shadow-emerald-950/20">
+            <Plus className="mr-2 h-4 w-4" /> Add Transaction
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px] border-border/60 bg-card/95 backdrop-blur-2xl">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold flex items-center gap-2">
-            <IndianRupee className="h-5 w-5 text-emerald-500" /> Record Transaction
+            <IndianRupee className="h-5 w-5 text-emerald-500" /> {editData ? "Edit Transaction" : "Add Transaction"}
           </DialogTitle>
           <DialogDescription>
-            Log income or expense details to keep your financial metrics accurate.
+            {editData ? "Update your transaction details." : "Log income or expense details to keep your financial metrics accurate."}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           {/* Type Toggle */}
-          <div className="grid grid-cols-2 gap-2 p-1 bg-muted/60 rounded-xl border border-border/40">
+          <div className="grid grid-cols-3 gap-2 p-1 bg-muted/60 rounded-xl border border-border/40">
             <button
               type="button"
               onClick={() => setType("expense")}
@@ -148,6 +167,17 @@ export function AddTransactionDialog({ categories }: { categories: Category[] })
               }`}
             >
               <ArrowUpRight className="h-4 w-4" /> Income
+            </button>
+            <button
+              type="button"
+              onClick={() => setType("asset")}
+              className={`flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-lg transition-all ${
+                type === "asset"
+                  ? "bg-blue-500/15 text-blue-500 border border-blue-500/30 shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Building2 className="h-4 w-4" /> Asset
             </button>
           </div>
 
@@ -243,10 +273,12 @@ export function AddTransactionDialog({ categories }: { categories: Category[] })
               className={
                 type === "income"
                   ? "bg-emerald-600 hover:bg-emerald-500 text-white"
-                  : "bg-rose-600 hover:bg-rose-500 text-white"
+                  : type === "expense"
+                  ? "bg-rose-600 hover:bg-rose-500 text-white"
+                  : "bg-blue-600 hover:bg-blue-500 text-white"
               }
             >
-              {isPending ? "Saving..." : `Record ${type === "income" ? "Income" : "Expense"}`}
+              {isPending ? "Saving..." : editData ? "Save Changes" : `Record ${type === "income" ? "Income" : type === "expense" ? "Expense" : "Asset"}`}
             </Button>
           </div>
         </form>

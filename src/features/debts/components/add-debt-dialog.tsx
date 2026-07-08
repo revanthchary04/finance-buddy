@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import { createDebt } from "../actions/debt.actions";
+import { createDebt, updateDebt } from "../actions/debt.actions";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -17,7 +17,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export function AddDebtDialog() {
+import { useEffect } from "react";
+
+export function AddDebtDialog({ editData, trigger }: { editData?: any, trigger?: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [type, setType] = useState("loan");
   const [name, setName] = useState("");
@@ -27,6 +29,18 @@ export function AddDebtDialog() {
   const [minDue, setMinDue] = useState("");
   const [startDate, setStartDate] = useState("");
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (open && editData) {
+      setType(editData.type || "loan");
+      setName(editData.name || "");
+      setAmount(editData.principal_amount?.toString() || "");
+      setInterest(editData.interest_rate?.toString() || "");
+      setTenure(editData.tenure_months?.toString() || "");
+      setMinDue(editData.min_due?.toString() || "");
+      setStartDate(editData.start_date || "");
+    }
+  }, [open, editData]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,14 +60,18 @@ export function AddDebtDialog() {
         start_date: startDate
       };
 
-      const res = await createDebt(formData);
+      const res = editData 
+        ? await updateDebt(editData.id, formData)
+        : await createDebt(formData);
+
       if (res.error) {
         toast.error(res.error);
       } else {
-        toast.success("Debt added successfully!");
+        toast.success(editData ? "Debt updated successfully!" : "Debt added successfully!");
         setOpen(false);
-        // reset form
-        setName(""); setAmount(""); setInterest(""); setTenure(""); setStartDate(""); setMinDue("");
+        if (!editData) {
+          setName(""); setAmount(""); setInterest(""); setTenure(""); setStartDate(""); setMinDue("");
+        }
       }
     });
   };
@@ -61,15 +79,17 @@ export function AddDebtDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" /> Add Debt
-        </Button>
+        {trigger || (
+          <Button>
+            <Plus className="mr-2 h-4 w-4" /> Add Debt
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add New Liability</DialogTitle>
+          <DialogTitle>{editData ? "Edit Liability" : "Add New Liability"}</DialogTitle>
           <DialogDescription>
-            Track a new loan, credit card, or borrowed money.
+            {editData ? "Update the details of your debt." : "Track a new loan, credit card, or borrowed money."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
@@ -124,7 +144,7 @@ export function AddDebtDialog() {
 
           <div className="pt-4 flex justify-end">
             <Button type="submit" disabled={isPending}>
-              {isPending ? "Adding..." : "Add Debt"}
+              {isPending ? "Saving..." : editData ? "Save Changes" : "Add Debt"}
             </Button>
           </div>
         </form>

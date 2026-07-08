@@ -96,3 +96,36 @@ export async function deleteTransaction(id: string) {
   
   return { success: true };
 }
+
+export async function updateTransaction(id: string, data: any) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "Unauthorized" };
+  }
+
+  const result = transactionSchema.safeParse(data);
+  if (!result.success) {
+    return { error: result.error.issues[0]?.message || "Invalid transaction data" };
+  }
+
+  const { error } = await supabase.from("transactions").update({
+    amount: result.data.amount,
+    type: result.data.type,
+    category_id: result.data.category_id,
+    date: typeof result.data.date === "string" ? result.data.date : result.data.date.toISOString().split("T")[0],
+    description: result.data.description,
+    location: result.data.location,
+  }).eq("id", id).eq("user_id", user.id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath("/transactions");
+  revalidatePath("/reports");
+  
+  return { success: true };
+}

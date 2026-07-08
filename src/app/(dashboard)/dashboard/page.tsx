@@ -1,20 +1,24 @@
 import { createClient } from "@/lib/supabase/server";
 import { getDashboardStats, getRecentTransactions } from "@/features/dashboard/actions/dashboard.actions";
 import { getCategories, getTransactions } from "@/features/transactions/actions/transaction.actions";
-import { getDebts } from "@/features/debts/actions/debt.actions";
+import { getDebts, getLoanPayments } from "@/features/debts/actions/debt.actions";
 import { AddTransactionDialog } from "@/features/transactions/components/add-transaction-dialog";
 import { FintechSectionCards } from "@/components/fintech-section-cards";
 import { ChartAreaInteractive } from "@/components/chart-area-interactive";
 import { DataTable } from "@/components/data-table";
 import { DashboardGreeting } from "@/components/dashboard-greeting";
 import { FinancialWarningBanner } from "@/features/warnings/components/financial-warning-banner";
-import { calculateWarningLevel } from "@/features/warnings/utils/financial-warnings";
+import { calculateBudgetWarnings } from "@/features/warnings/utils/financial-warnings";
+import { getBudgets } from "@/features/budgets/actions/budget.actions";
+import { getWishlistItems } from "@/features/wishlist/actions/wishlist.actions";
+import { generateNotifications } from "@/features/notifications/actions/notification.actions";
+import { RecentTransactionsList, DashboardWishlistWidget } from "@/features/dashboard/components/dashboard-widgets";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { CreditCard, Clock, Landmark } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { Suspense } from "react";
 import { OnboardingModal } from "@/components/onboarding-modal";
+import { RefreshWrapper } from "@/components/refresh-wrapper";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -28,12 +32,15 @@ export default async function DashboardPage() {
     if (profile?.full_name) userName = profile.full_name;
   }
 
-  const [stats, recentTransactions, allTransactions, categories, debts] = await Promise.all([
+  const [stats, recentTransactions, allTransactions, categories, debts, loanPayments, budgets, wishlistItems] = await Promise.all([
     getDashboardStats(),
     getRecentTransactions(),
     getTransactions(),
     getCategories(),
-    getDebts()
+    getDebts(),
+    getLoanPayments(),
+    getBudgets(),
+    getWishlistItems()
   ]);
 
   const lifetimeSavings = Number(stats?.lifetime_savings || 0);
@@ -43,20 +50,17 @@ export default async function DashboardPage() {
   const monthlyNet = Number(stats?.monthly_net || 0);
   const totalDebt = Number(stats?.total_debt || 0);
   const transactionCount = Number(stats?.transaction_count || 0);
+  const totalSavingsPool = Number(stats?.total_savings_pool || 0);
+  const totalBankBalance = Number(stats?.total_bank_balance || 0);
 
-  // Map real database transactions to dashboard DataTable format
-  const tableData = recentTransactions.map((tx, idx) => ({
-    id: idx + 1,
-    header: tx.description || tx.categories?.name || "Transaction",
-    type: tx.categories?.name || (tx.type === "income" ? "Deposit" : "Payment"),
-    status: tx.type === "income" ? "Done" : "In Process",
-    target: `₹${Number(tx.amount).toLocaleString("en-IN")}`,
-    limit: tx.type === "income" ? "Credit" : "Debit",
-  }));
 
-  const warning = calculateWarningLevel(stats);
+  const warningState = calculateBudgetWarnings(budgets, stats);
+  const hasBudgets = budgets && budgets.length > 0;
 
-  const isNewUser = profile?.onboarding_completed === false && 
+  // Generate any automatic notifications based on current data
+  await generateNotifications(budgets, stats, debts, wishlistItems);
+
+  const isNewUser = profile?.onboarding_completed === false &&  
     new Date(profile.created_at) > new Date(Date.now() - 24 * 60 * 60 * 1000);
 
   return (
@@ -74,26 +78,52 @@ export default async function DashboardPage() {
       
       {/* Row 1: Dashboard Metric Cards */}
       <Suspense fallback={<div className="h-32 animate-pulse bg-muted rounded-xl" />}>
-        <FintechSectionCards
-          lifetimeSavings={lifetimeSavings}
-          trueNetWorth={trueNetWorth}
-          monthlyIncome={monthlyIncome}
-          monthlyExpenses={monthlyExpenses}
-          monthlyNet={monthlyNet}
-          totalDebt={totalDebt}
-          transactionCount={transactionCount}
-        />
+        <RefreshWrapper fallback={<div className="h-[250px] animate-pulse bg-muted rounded-xl w-full" />}>
+          <FintechSectionCards
+            lifetimeSavings={lifetimeSavings}
+            trueNetWorth={trueNetWorth}
+            monthlyIncome={monthlyIncome}
+            monthlyExpenses={monthlyExpenses}
+            monthlyNet={monthlyNet}
+            totalDebt={totalDebt}
+            transactionCount={transactionCount}
+            totalSavingsPool={totalSavingsPool}
+            totalBankBalance={totalBankBalance}
+          />
+        </RefreshWrapper>
       </Suspense>
 
-      <FinancialWarningBanner warning={warning} />
+      <FinancialWarningBanner warningState={warningState} hasBudgets={hasBudgets} />
 
       {/* Row 2: Live Area Chart (Cash flow trends) */}
-      <div className="border border-border/50 shadow-xl rounded-xl overflow-hidden bg-card/60 backdrop-blur-xl">
-        <ChartAreaInteractive transactions={allTransactions} />
-      </div>
-      {/* Row 3: Live DataTable (Recent Transactions) */}
-      <div className="border border-border/50 shadow-xl rounded-xl overflow-hidden bg-card/60 backdrop-blur-xl py-4">
-        <DataTable data={tableData} />
+      <RefreshWrapper fallback={<div className="h-[400px] animate-pulse bg-muted rounded-xl w-full" />}>
+        <div className="border border-border/50 shadow-xl rounded-xl overflow-hidden bg-card/60 backdrop-blur-xl">
+          <ChartAreaInteractive transactions={[
+            ...allTransactions,
+            ...loanPayments.map(p => ({
+              ...p,
+              type: "expense",
+              date: p.payment_date,
+            }))
+          ]} />
+        </div>
+      </RefreshWrapper>
+      {/* Row 3: Split Layout (Transactions & Wishlist) */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div className="lg:col-span-3 border border-border/50 shadow-xl rounded-xl overflow-hidden bg-card/60 backdrop-blur-xl flex flex-col">
+          <div className="p-4 border-b border-border/50 bg-muted/10">
+            <h3 className="font-semibold text-sm">Recent Transactions</h3>
+          </div>
+          <RefreshWrapper fallback={<div className="h-[300px] animate-pulse bg-muted w-full" />}>
+            <RecentTransactionsList transactions={recentTransactions} />
+          </RefreshWrapper>
+        </div>
+        
+        <div className="lg:col-span-2 border border-border/50 shadow-xl rounded-xl overflow-hidden bg-card/60 backdrop-blur-xl">
+          <RefreshWrapper fallback={<div className="h-[300px] animate-pulse bg-muted w-full" />}>
+            <DashboardWishlistWidget items={wishlistItems} />
+          </RefreshWrapper>
+        </div>
       </div>
     </div>
   );

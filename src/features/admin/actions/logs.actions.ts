@@ -27,8 +27,9 @@ export async function logAuthEvent(userId: string, action: string) {
 /**
  * Server action to fetch audit logs.
  * Strictly enforces that the caller has 'admin' or 'super_admin' roles.
+ * Note: A Supabase cron job or pg_cron should be set up in production to delete logs older than 7 days.
  */
-export async function getAuditLogs() {
+export async function getAuditLogs(page: number = 1) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -51,7 +52,14 @@ export async function getAuditLogs() {
   // We'll use the admin client just to be safe and ensure all logs are returned.
   const adminClient = createAdminClient();
   
-  const { data, error } = await adminClient
+  const pageSize = 15;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  const oneWeekAgo = new Date();
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+  const { data, count, error } = await adminClient
     .from("audit_log")
     .select(`
       id,
@@ -63,17 +71,19 @@ export async function getAuditLogs() {
         email,
         role
       )
-    `)
+    `, { count: 'exact' })
     .eq("target_type", "auth")
-    .order("created_at", { ascending: false });
+    .gte("created_at", oneWeekAgo.toISOString())
+    .order("created_at", { ascending: false })
+    .range(from, to);
 
   if (error) {
     console.error("Error fetching audit logs:", error);
-    return [];
+    return { logs: [], totalCount: 0, totalPages: 0, currentPage: page };
   }
 
   // Transform data to flatten the profile fields for the datatable
-  return data.map((log: any) => ({
+  const logs = data.map((log: any) => ({
     id: log.id,
     action: log.action,
     created_at: log.created_at,
@@ -82,4 +92,12 @@ export async function getAuditLogs() {
     user_email: log.profiles?.email || "Unknown",
     user_role: log.profiles?.role || "user",
   }));
+
+  const totalCount = count || 0;
+  return { 
+    logs, 
+    totalCount, 
+    totalPages: Math.ceil(totalCount / pageSize), 
+    currentPage: page 
+  };
 }

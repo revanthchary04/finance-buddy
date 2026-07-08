@@ -139,6 +139,7 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
   {
     accessorKey: "header",
     header: "Description",
+    minSize: 150,
     cell: ({ row }) => {
       return <TableCellViewer item={row.original} />
     },
@@ -147,6 +148,7 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
   {
     accessorKey: "type",
     header: "Category",
+    minSize: 120,
     cell: ({ row }) => (
       <div className="w-32">
         <Badge variant="outline" className="px-1.5 text-muted-foreground">
@@ -158,6 +160,7 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
   {
     accessorKey: "status",
     header: "Status",
+    minSize: 100,
     cell: ({ row }) => (
       <Badge variant="outline" className="px-1.5 text-muted-foreground">
         {row.original.status === "Done" ? (
@@ -172,6 +175,7 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
   {
     accessorKey: "target",
     header: () => <div className="w-full text-right">Amount</div>,
+    minSize: 100,
     cell: ({ row }) => (
       <form
         onSubmit={(e) => {
@@ -197,6 +201,7 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
   {
     accessorKey: "limit",
     header: () => <div className="w-full text-right">Type</div>,
+    minSize: 80,
     cell: ({ row }) => (
       <form
         onSubmit={(e) => {
@@ -222,6 +227,8 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
 
   {
     id: "actions",
+    minSize: 80,
+    enableResizing: false,
     cell: () => (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -273,13 +280,17 @@ function DraggableRow({ row }: { row: Row<z.infer<typeof schema>> }) {
 
 export function DataTable({
   data: initialData,
+  hideToolbar = false,
+  hideActions = false,
 }: {
   data: z.infer<typeof schema>[]
+  hideToolbar?: boolean
+  hideActions?: boolean
 }) {
   const [data, setData] = React.useState(() => initialData)
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({})
+    React.useState<VisibilityState>({ actions: !hideActions })
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   )
@@ -342,7 +353,8 @@ export function DataTable({
       defaultValue="outline"
       className="w-full flex-col justify-start gap-6"
     >
-      <div className="flex items-center justify-between px-4 lg:px-6">
+      {!hideToolbar && (
+        <div className="flex items-center justify-between px-4 lg:px-6">
         <Label htmlFor="view-selector" className="sr-only">
           View
         </Label>
@@ -411,6 +423,7 @@ export function DataTable({
           </Button>
         </div>
       </div>
+      )}
       <TabsContent
         value="outline"
         className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6"
@@ -482,7 +495,8 @@ export function DataTable({
             </div>
           </DndContext>
         </div>
-        <div className="flex items-center justify-between px-4">
+        {!hideActions && (
+          <div className="flex items-center justify-between px-4">
           <div className="hidden flex-1 text-sm text-muted-foreground lg:flex">
             {table.getFilteredSelectedRowModel().rows.length} of{" "}
             {table.getFilteredRowModel().rows.length} row(s) selected.
@@ -557,8 +571,9 @@ export function DataTable({
                 <IconChevronsRight />
               </Button>
             </div>
+            </div>
           </div>
-        </div>
+        )}
       </TabsContent>
       <TabsContent
         value="past-performance"

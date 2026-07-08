@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createBudget } from "../actions/budget.actions";
+import { createBudget, updateBudget } from "../actions/budget.actions";
 import { toast } from "sonner";
 import { Plus, PiggyBank } from "lucide-react";
 
@@ -28,7 +28,9 @@ interface Category {
   name: string;
 }
 
-export function AddBudgetDialog({ categories }: { categories: Category[] }) {
+import { useEffect } from "react";
+
+export function AddBudgetDialog({ categories, editData, trigger }: { categories: Category[], editData?: any, trigger?: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -44,6 +46,17 @@ export function AddBudgetDialog({ categories }: { categories: Category[] }) {
   const [startDate, setStartDate] = useState(firstDay);
   const [endDate, setEndDate] = useState(lastDay);
 
+  useEffect(() => {
+    if (open && editData) {
+      setName(editData.name || "");
+      setAmount(editData.amount?.toString() || "");
+      setCategoryId(editData.category_id || "");
+      setPeriod(editData.period || "monthly");
+      setStartDate(editData.start_date || firstDay);
+      setEndDate(editData.end_date || lastDay);
+    }
+  }, [open, editData, firstDay, lastDay]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -58,22 +71,28 @@ export function AddBudgetDialog({ categories }: { categories: Category[] }) {
     }
 
     startTransition(async () => {
-      const res = await createBudget({
+      const payload = {
         name,
         amount: Number(amount),
         category_id: categoryId || undefined,
         period,
         start_date: startDate,
         end_date: endDate,
-      });
+      };
+
+      const res = editData 
+        ? await updateBudget(editData.id, payload)
+        : await createBudget(payload);
 
       if (res.error) {
         toast.error(res.error);
       } else {
-        toast.success("Budget goal created!");
+        toast.success(editData ? "Budget goal updated!" : "Budget goal created!");
         setOpen(false);
-        setName("");
-        setAmount("");
+        if (!editData) {
+          setName("");
+          setAmount("");
+        }
       }
     });
   };
@@ -81,17 +100,19 @@ export function AddBudgetDialog({ categories }: { categories: Category[] }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium shadow-lg shadow-blue-950/20">
-          <Plus className="mr-2 h-4 w-4" /> Create Budget Limit
-        </Button>
+        {trigger || (
+          <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium shadow-lg shadow-blue-950/20">
+            <Plus className="mr-2 h-4 w-4" /> Create Budget Limit
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px] border-border/60 bg-card/95 backdrop-blur-2xl">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold flex items-center gap-2">
-            <PiggyBank className="h-5 w-5 text-blue-500" /> Set Spending Limit
+            <PiggyBank className="h-5 w-5 text-blue-500" /> {editData ? "Edit Spending Limit" : "Set Spending Limit"}
           </DialogTitle>
           <DialogDescription>
-            Define a monthly or category budget limit to track your spending.
+            {editData ? "Update your budget limit to better match your tracking." : "Define a monthly or category budget limit to track your spending."}
           </DialogDescription>
         </DialogHeader>
 
@@ -187,7 +208,7 @@ export function AddBudgetDialog({ categories }: { categories: Category[] }) {
               Cancel
             </Button>
             <Button type="submit" disabled={isPending} className="bg-blue-600 hover:bg-blue-500 text-white">
-              {isPending ? "Creating..." : "Save Budget"}
+              {isPending ? "Saving..." : editData ? "Save Changes" : "Save Budget"}
             </Button>
           </div>
         </form>

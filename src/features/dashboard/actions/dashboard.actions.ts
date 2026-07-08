@@ -28,6 +28,10 @@ export async function getDashboardStats() {
     .filter(t => t.type === "expense")
     .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
+  const allTimeAssets = allTransactions
+    .filter(t => t.type === "asset")
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
   // Fetch total savings pool
   const { data: savingsAccounts } = await db
     .from('savings_accounts')
@@ -36,8 +40,16 @@ export async function getDashboardStats() {
 
   const totalSavingsPool = savingsAccounts?.reduce((sum, s) => sum + Number(s.balance), 0) || 0;
 
-  // Update Lifetime Savings — subtract savings contributions
-  const lifetimeSavings = allTimeIncome - allTimeExpenses - totalSavingsPool;
+  // Fetch total bank accounts balance
+  const { data: bankAccounts } = await db
+    .from('bank_accounts')
+    .select('current_balance')
+    .eq('user_id', userId);
+
+  const totalBankBalance = bankAccounts?.reduce((sum, b) => sum + Number(b.current_balance), 0) || 0;
+
+  // Update Lifetime Savings — raw surplus
+  const lifetimeSavings = allTimeIncome - allTimeExpenses;
 
   // 2. True Net Worth (Assets view)
   const { data: debts } = await db
@@ -48,20 +60,10 @@ export async function getDashboardStats() {
     
   const totalDebt = debts?.reduce((sum, d) => sum + Number(d.current_balance), 0) || 0;
 
-  const { data: wishlistItems } = await db
-    .from('wishlist')
-    .select('current_amount, status')
-    .eq('user_id', userId);
-
-  let allTimeWishlist = 0;
-  wishlistItems?.forEach(item => {
-    if (item.status !== 'cancelled') {
-      allTimeWishlist += Number(item.current_amount) || 0;
-    }
-  });
-
-  // Update True Net Worth — savings pool is an asset
-  const trueNetWorth = lifetimeSavings + totalSavingsPool + allTimeWishlist - totalDebt;
+  // Update True Net Worth
+  // totalAssets = totalSavingsPool + totalBankBalance + asset transactions
+  const totalAssets = totalSavingsPool + totalBankBalance + allTimeAssets;
+  const trueNetWorth = totalAssets - totalDebt;
 
   // 3. Monthly snapshot (context only)
   const now = new Date();
@@ -89,6 +91,7 @@ export async function getDashboardStats() {
     total_debt: totalDebt,
     transaction_count: allTransactions.length,
     total_savings_pool: totalSavingsPool,
+    total_bank_balance: totalBankBalance,
   };
 }
 

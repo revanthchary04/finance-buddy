@@ -3,7 +3,7 @@ import { z } from "zod";
 export const transactionSchema = z.object({
   id: z.string().uuid().optional(),
   amount: z.coerce.number().positive("Amount must be greater than 0"),
-  type: z.enum(["income", "expense"]),
+  type: z.enum(["income", "expense", "asset"]),
   category_id: z.string().uuid("Please select a category"),
   date: z.string().or(z.date()),
   location: z.string().optional(),
@@ -16,7 +16,7 @@ export type Transaction = {
   id: string;
   user_id: string;
   category_id: string | null;
-  type: "income" | "expense";
+  type: "income" | "expense" | "asset";
   amount: number;
   description: string | null;
   date: string;

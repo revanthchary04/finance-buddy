@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Clock } from "lucide-react";
+import { Plus, Clock, Pencil } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -13,10 +13,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { AddFundsDialog } from "./add-funds-dialog";
 import { SavingsHistoryDrawer } from "./savings-history-drawer";
+import { AddSavingsAccountDialog } from "./add-savings-account-dialog";
 
 export function SavingsAccountCard({ account }: { account: any }) {
   const [isAddFundsOpen, setIsAddFundsOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   return (
     <>
@@ -25,9 +27,19 @@ export function SavingsAccountCard({ account }: { account: any }) {
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary/60 via-primary to-primary/40" />
 
         <CardHeader className="pb-2 pt-6">
-          <CardTitle className="text-2xl font-bold truncate text-foreground tracking-tight" title={account.name}>
-            {account.name}
-          </CardTitle>
+          <div className="flex items-start justify-between">
+            <CardTitle className="text-2xl font-bold truncate text-foreground tracking-tight" title={account.name}>
+              {account.name}
+            </CardTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 -mt-2 -mr-2 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10"
+              onClick={() => setIsEditOpen(true)}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          </div>
           <CardDescription className="text-sm text-muted-foreground/80 line-clamp-2 mt-1" title={account.description}>
             {account.description}
           </CardDescription>
@@ -73,6 +85,12 @@ export function SavingsAccountCard({ account }: { account: any }) {
         open={isHistoryOpen} 
         onOpenChange={setIsHistoryOpen} 
         account={account} 
+      />
+      
+      <AddSavingsAccountDialog 
+        open={isEditOpen} 
+        onOpenChange={setIsEditOpen} 
+        editData={account} 
       />
     </>
   );

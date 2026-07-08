@@ -16,7 +16,7 @@ export async function createFeatureRequest(data: { title: string; description: s
     description: data.description,
     reference_links: data.reference_links || [],
     request_type: data.request_type,
-    status: 'pending'
+    status: 'under_review'
   });
 
   if (error) {
@@ -36,7 +36,7 @@ export async function getUserFeatureRequests() {
 
   const { data, error } = await supabase
     .from("feature_requests")
-    .select("*")
+    .select("*, feature_request_comments(*)")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
@@ -62,7 +62,7 @@ export async function getAllFeatureRequests() {
   const adminClient = createAdminClient();
   const { data, error } = await adminClient
     .from("feature_requests")
-    .select("*, profiles(full_name, email)")
+    .select("*, profiles!feature_requests_user_id_fkey(full_name, email), feature_request_comments(*)")
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -89,6 +89,35 @@ export async function updateFeatureRequestStatus(id: string, status: string) {
     .from("feature_requests")
     .update({ status })
     .eq("id", id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/feature-requests");
+  revalidatePath("/admin/features");
+  return { success: true };
+}
+
+export async function addFeatureRequestComment(requestId: string, comment: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return { error: "Unauthorized" };
+
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  if (profile?.role !== "admin" && profile?.role !== "super_admin") {
+    return { error: "Unauthorized" };
+  }
+
+  const adminClient = createAdminClient();
+  const { error } = await adminClient
+    .from("feature_request_comments")
+    .insert({
+      feature_request_id: requestId,
+      admin_id: user.id,
+      comment: comment
+    });
 
   if (error) {
     return { error: error.message };

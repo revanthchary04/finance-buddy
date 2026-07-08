@@ -14,6 +14,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { addContribution, markAsPurchased } from "../actions/wishlist.actions";
+import { Pencil } from "lucide-react";
+import { AddWishlistDialog } from "./add-wishlist-dialog";
 
 export function WishlistClient({ items }: { items: any[] }) {
   const [isPending, startTransition] = useTransition();
@@ -72,26 +74,33 @@ export function WishlistClient({ items }: { items: any[] }) {
   }
 
   return (
-    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {items.map((item) => {
         const current = Number(item.current_amount) || 0;
         const target = Number(item.target_amount) || 0;
         const percent = Math.min((current / target) * 100, 100);
         
         return (
-          <Card key={item.id} className="flex flex-col border-border/50 shadow-sm bg-card/60 backdrop-blur-xl hover:shadow-md transition-all">
+          <Card key={item.id} className="w-full flex flex-col border-border/50 shadow-sm bg-card/60 backdrop-blur-xl hover:shadow-md transition-all">
             <CardHeader className="pb-3">
               <div className="flex justify-between items-start mb-2">
-                <Badge variant="outline" className={getPriorityColor(item.priority)}>
-                  {item.priority.charAt(0).toUpperCase() + item.priority.slice(1)}
-                </Badge>
-                <Badge variant="outline" className={getStatusColor(item.status)}>
-                  {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-                </Badge>
+                <div className="flex gap-2">
+                  <Badge variant="outline" className={getPriorityColor(item.priority)}>
+                    {item.priority.charAt(0).toUpperCase() + item.priority.slice(1)}
+                  </Badge>
+                  <Badge variant="outline" className={getStatusColor(item.status)}>
+                    {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                  </Badge>
+                </div>
+                <AddWishlistDialog editData={item} trigger={
+                  <Button variant="ghost" size="icon" className="h-8 w-8 -mt-1.5 -mr-1.5 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10">
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                } />
               </div>
-              <CardTitle className="text-xl line-clamp-1">{item.name}</CardTitle>
+              <CardTitle className="text-xl">{item.name}</CardTitle>
               {item.description && (
-                <CardDescription className="line-clamp-2">{item.description}</CardDescription>
+                <CardDescription>{item.description}</CardDescription>
               )}
             </CardHeader>
             <CardContent className="flex-1 pb-3">

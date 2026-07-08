@@ -96,3 +96,34 @@ export async function deleteBudget(id: string) {
   revalidatePath("/dashboard");
   return { success: true };
 }
+
+export async function updateBudget(id: string, data: {
+  name: string;
+  amount: number;
+  category_id?: string;
+  period: "weekly" | "monthly" | "yearly";
+  start_date: string;
+  end_date: string;
+}) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return { error: "Unauthorized" };
+
+  const { error } = await supabase.from("budgets").update({
+    name: data.name,
+    amount: data.amount,
+    category_id: data.category_id || null,
+    period: data.period,
+    start_date: data.start_date,
+    end_date: data.end_date,
+  }).eq("id", id).eq("user_id", user.id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/budgets");
+  revalidatePath("/dashboard");
+  return { success: true };
+}

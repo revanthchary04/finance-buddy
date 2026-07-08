@@ -20,7 +20,8 @@ import {
   Server,
   Database,
   Lock,
-  GitCommit
+  GitCommit,
+  FolderTree
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -36,6 +37,7 @@ const navigation = [
     links: [
       { title: "Transactions", href: "/docs/features/transactions", icon: CreditCard },
       { title: "Budgets", href: "/docs/features/budgets", icon: Target },
+      { title: "Categories", href: "/docs/features/categories", icon: FolderTree },
       { title: "Savings Accounts", href: "/docs/features/savings-accounts", icon: Landmark },
       { title: "Debts & Loans", href: "/docs/features/debts", icon: Briefcase },
       { title: "Wishlist & Goals", href: "/docs/features/wishlist", icon: Heart },

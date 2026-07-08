@@ -1,8 +1,13 @@
 import { getAuditLogs } from "@/features/admin/actions/logs.actions";
 import { LogsClient } from "@/features/admin/components/logs-client";
 
-export default async function AppLogsPage() {
-  const rawLogs = await getAuditLogs();
+export default async function AppLogsPage({
+  searchParams,
+}: {
+  searchParams: { page?: string };
+}) {
+  const page = Number(searchParams.page) || 1;
+  const { logs: rawLogs, totalPages, currentPage } = await getAuditLogs(page);
 
   return (
     <div className="flex-1 space-y-6">
@@ -16,8 +21,7 @@ export default async function AppLogsPage() {
           </p>
         </div>
       </div>
-      
-      <LogsClient initialLogs={rawLogs} />
+      <LogsClient initialLogs={rawLogs} totalPages={totalPages} currentPage={currentPage} />
     </div>
   );
 }

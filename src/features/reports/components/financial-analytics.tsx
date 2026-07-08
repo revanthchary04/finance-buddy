@@ -16,7 +16,7 @@ import {
 } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowUpRight, ArrowDownRight, TrendingUp } from "lucide-react";
-import { getMonthlyTrend, getSpendingByCategory, getMonthlySummary } from "../actions/report.actions";
+import { getMonthlyTrend, getSpendingByCategory, getMonthlySummary, getAssetsByCategory } from "../actions/report.actions";
 
 const COLORS = ["#10b981", "#f43f5e", "#3b82f6", "#a855f7", "#f59e0b", "#06b6d4", "#ec4899", "#8b5cf6"];
 
@@ -26,6 +26,7 @@ export function FinancialAnalytics() {
 
   const [trendData, setTrendData] = useState<any[]>([]);
   const [categoryData, setCategoryData] = useState<any[]>([]);
+  const [assetData, setAssetData] = useState<any[]>([]);
   const [summaryData, setSummaryData] = useState<any>({ totalIncome: 0, totalExpenses: 0, totalSavings: 0, netBalance: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -38,15 +39,17 @@ export function FinancialAnalytics() {
       const startStr = startDate.toISOString().split("T")[0];
       const endStr = new Date().toISOString().split("T")[0];
 
-      const [trendRes, catRes, sumRes] = await Promise.all([
+      const [trendRes, catRes, sumRes, assetRes] = await Promise.all([
         getMonthlyTrend(months),
         getSpendingByCategory(startStr, endStr),
-        getMonthlySummary(months)
+        getMonthlySummary(months),
+        getAssetsByCategory()
       ]);
 
       if (trendRes.success) setTrendData(trendRes.data || []);
       if (catRes.success) setCategoryData(catRes.data || []);
       if (sumRes.success && sumRes.data) setSummaryData(sumRes.data);
+      if (assetRes.success) setAssetData(assetRes.data || []);
       
       setLoading(false);
     }
@@ -122,104 +125,70 @@ export function FinancialAnalytics() {
             </Card>
           </div>
 
-          {/* Visual Charts Grid 1 */}
-          <div className="grid gap-6 md:grid-cols-2">
-            {/* Income vs Expense Bar Chart */}
+          {/* 2. Monthly Summary Table */}
+          <div className="pt-8">
+            <h3 className="text-xl font-semibold mb-4 text-foreground/90 flex items-center gap-2">
+              <span className="h-6 w-1 rounded-full bg-blue-500 block"></span> Monthly Summary
+            </h3>
             <Card className="border-border/50 shadow-xl bg-card/60 backdrop-blur-xl">
-              <CardHeader>
-                <CardTitle className="text-lg font-bold">Financial Comparison</CardTitle>
-                <CardDescription>Monthly Income vs Expenses</CardDescription>
-              </CardHeader>
-              <CardContent className="h-[300px]">
-                {trendData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={trendData}>
-                      <XAxis dataKey="month" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => {
-                        const [y, m] = val.split('-');
-                        const d = new Date(Number(y), Number(m) - 1);
-                        return d.toLocaleDateString('en-US', { month: 'short' });
-                      }} />
-                      <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v}`} />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: "#18181b", borderColor: "#27272a", borderRadius: "8px" }}
-                        formatter={(value: any, name: any) => [`₹${Number(value).toLocaleString("en-IN")}`, String(name).charAt(0).toUpperCase() + String(name).slice(1)]}
-                        labelFormatter={(label: any) => {
-                          if (!label) return "";
-                          const [y, m] = String(label).split('-');
-                          const d = new Date(Number(y), Number(m) - 1);
-                          return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-                        }}
-                      />
-                      <Legend />
-                      <Bar dataKey="income" fill="#10b981" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="expense" fill="#f43f5e" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="h-full flex items-center justify-center text-muted-foreground text-sm">No data available</div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Expense Category Breakdown Pie Chart */}
-            <Card className="border-border/50 shadow-xl bg-card/60 backdrop-blur-xl">
-              <CardHeader>
-                <CardTitle className="text-lg font-bold">Expense Breakdown</CardTitle>
-                <CardDescription>Share of spending by category</CardDescription>
-              </CardHeader>
-              <CardContent className="h-[300px] flex items-center justify-center">
-                {categoryData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={categoryData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={90}
-                        paddingAngle={4}
-                        dataKey="amount"
-                        nameKey="category"
-                      >
-                        {categoryData.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{ backgroundColor: "#18181b", borderColor: "#27272a", borderRadius: "8px" }}
-                        formatter={(value: any) => [`₹${Number(value).toLocaleString("en-IN")}`, "Spent"]}
-                      />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="text-center text-xs text-muted-foreground">
-                    No expense data available to build chart.
-                  </div>
-                )}
+              <CardContent className="p-0 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border/50 text-left text-muted-foreground bg-muted/20">
+                        <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">Month</th>
+                        <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-right">Income</th>
+                        <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-right">Expenses</th>
+                        <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-right">Net</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {trendData.length > 0 ? (
+                        trendData.slice().reverse().map((row) => {
+                          const net = row.income - row.expense;
+                          return (
+                            <tr key={row.month} className="border-b border-border/20 last:border-0 hover:bg-muted/10 transition-colors">
+                              <td className="px-6 py-4 font-medium whitespace-nowrap">{(() => {
+                                const [y, m] = row.month.split('-');
+                                return new Date(Number(y), Number(m) - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                              })()}</td>
+                              <td className="px-6 py-4 text-right text-emerald-500 font-medium">₹{row.income.toLocaleString("en-IN")}</td>
+                              <td className="px-6 py-4 text-right text-rose-500 font-medium">₹{row.expense.toLocaleString("en-IN")}</td>
+                              <td className={`px-6 py-4 text-right font-bold ${net >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                                {net > 0 ? "+" : ""}₹{net.toLocaleString("en-IN")}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={4} className="py-8 text-center text-muted-foreground">No data available</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Visual Charts Grid 2 */}
-          <div className="grid gap-6 md:grid-cols-2">
-            {/* Top Spending Categories Horizontal Bar Chart */}
+          {/* 3. Top Spending Categories Bar Chart */}
+          <div className="pt-8">
+            <h3 className="text-xl font-semibold mb-4 text-foreground/90 flex items-center gap-2">
+              <span className="h-6 w-1 rounded-full bg-rose-500 block"></span> Top Spending Categories
+            </h3>
             <Card className="border-border/50 shadow-xl bg-card/60 backdrop-blur-xl">
-              <CardHeader>
-                <CardTitle className="text-lg font-bold">Top Spending Categories</CardTitle>
-                <CardDescription>Highest expenditure areas</CardDescription>
-              </CardHeader>
-              <CardContent className="h-[300px]">
+              <CardContent className="p-6 h-[400px]">
                 {topCategories.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={topCategories} layout="vertical" margin={{ top: 0, right: 30, left: 20, bottom: 0 }}>
+                    <BarChart data={topCategories} layout="vertical" margin={{ top: 10, right: 30, left: 40, bottom: 0 }}>
                       <XAxis type="number" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v}`} />
-                      <YAxis dataKey="category" type="category" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} width={100} />
+                      <YAxis dataKey="category" type="category" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} width={120} />
                       <Tooltip
                         contentStyle={{ backgroundColor: "#18181b", borderColor: "#27272a", borderRadius: "8px" }}
                         formatter={(value: any) => [`₹${Number(value).toLocaleString("en-IN")}`, "Spent"]}
                       />
-                      <Bar dataKey="amount" fill="#3b82f6" radius={[0, 4, 4, 0]}>
+                      <Bar dataKey="amount" fill="#f43f5e" radius={[0, 4, 4, 0]} barSize={32}>
                         {topCategories.map((_, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
@@ -231,50 +200,77 @@ export function FinancialAnalytics() {
                 )}
               </CardContent>
             </Card>
+          </div>
 
-            {/* Monthly Summary Table */}
-            <Card className="border-border/50 shadow-xl bg-card/60 backdrop-blur-xl flex flex-col">
-              <CardHeader>
-                <CardTitle className="text-lg font-bold">Monthly Summary</CardTitle>
-                <CardDescription>Detailed month-by-month breakdown</CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1 overflow-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border/50 text-left text-muted-foreground">
-                      <th className="pb-3 font-medium">Month</th>
-                      <th className="pb-3 font-medium text-right">Income</th>
-                      <th className="pb-3 font-medium text-right">Expenses</th>
-                      <th className="pb-3 font-medium text-right">Savings</th>
-                      <th className="pb-3 font-medium text-right">Net</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {trendData.length > 0 ? (
-                      trendData.slice().reverse().map((row) => {
-                        const net = row.income - row.expense - row.savings;
-                        return (
-                          <tr key={row.month} className="border-b border-border/20 last:border-0 hover:bg-muted/10 transition-colors">
-                            <td className="py-3.5 font-medium">{(() => {
-                              const [y, m] = row.month.split('-');
-                              return new Date(Number(y), Number(m) - 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-                            })()}</td>
-                            <td className="py-3.5 text-right text-emerald-500 font-medium">₹{row.income.toLocaleString("en-IN")}</td>
-                            <td className="py-3.5 text-right text-rose-500 font-medium">₹{row.expense.toLocaleString("en-IN")}</td>
-                            <td className="py-3.5 text-right text-blue-500 font-medium">₹{row.savings.toLocaleString("en-IN")}</td>
-                            <td className={`py-3.5 text-right font-bold ${net >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
-                              ₹{net.toLocaleString("en-IN")}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    ) : (
-                      <tr>
-                        <td colSpan={5} className="py-8 text-center text-muted-foreground">No data available</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+          {/* 4. Expense Breakdown Pie Chart */}
+          <div className="pt-8 pb-8">
+            <h3 className="text-xl font-semibold mb-4 text-foreground/90 flex items-center gap-2">
+              <span className="h-6 w-1 rounded-full bg-emerald-500 block"></span> Expense Distribution
+            </h3>
+            <Card className="border-border/50 shadow-xl bg-card/60 backdrop-blur-xl">
+              <CardContent className="p-8 flex flex-col items-center justify-center">
+                {categoryData.length > 0 ? (
+                  <div className="h-[400px] w-full max-w-2xl">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={categoryData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={100}
+                          outerRadius={140}
+                          paddingAngle={3}
+                          dataKey="amount"
+                          nameKey="category"
+                        >
+                          {categoryData.map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{ backgroundColor: "#18181b", borderColor: "#27272a", borderRadius: "8px" }}
+                          formatter={(value: any) => [`₹${Number(value).toLocaleString("en-IN")}`, "Spent"]}
+                        />
+                        <Legend wrapperStyle={{ paddingTop: "20px" }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="text-center text-sm text-muted-foreground py-20">
+                    No expense data available to build chart.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          
+          {/* Assets Section */}
+          <div className="grid gap-6 md:grid-cols-1 mt-6">
+            <h3 className="text-xl font-semibold mb-4 text-foreground/90 flex items-center gap-2">
+              <span className="h-6 w-1 rounded-full bg-yellow-500 block"></span> Assets (All Time)
+            </h3>
+            <Card className="border-border/50 shadow-xl bg-card/60 backdrop-blur-xl">
+              <CardContent className="p-6 h-[400px]">
+                {assetData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={assetData} layout="vertical" margin={{ top: 0, right: 30, left: 20, bottom: 0 }}>
+                      <XAxis type="number" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v}`} />
+                      <YAxis dataKey="category" type="category" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} width={150} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: "#18181b", borderColor: "#27272a", borderRadius: "8px" }}
+                        formatter={(value: any) => [`₹${Number(value).toLocaleString("en-IN")}`, "Value"]}
+                      />
+                      <Bar dataKey="amount" fill="#eab308" radius={[0, 4, 4, 0]}>
+                        {assetData.map((_, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[(index + 3) % COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-muted-foreground text-sm">No asset data available</div>
+                )}
               </CardContent>
             </Card>
           </div>

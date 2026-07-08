@@ -6,7 +6,8 @@ import {
 } from "@/components/ui/sidebar";
 import { Header } from "@/layouts/header";
 import { getDashboardStats } from "@/features/dashboard/actions/dashboard.actions";
-import { calculateWarningLevel } from "@/features/warnings/utils/financial-warnings";
+import { calculateBudgetWarnings } from "@/features/warnings/utils/financial-warnings";
+import { getBudgets } from "@/features/budgets/actions/budget.actions";
 
 export default async function DashboardLayout({
   children,
@@ -29,15 +30,16 @@ export default async function DashboardLayout({
   const isAdmin = profile?.role === "admin" || profile?.role === "super_admin";
 
   const stats = await getDashboardStats();
-  const warning = calculateWarningLevel(stats);
-  const warningCount = warning.level ? 1 : 0;
+  const budgets = await getBudgets();
+  const warningState = calculateBudgetWarnings(budgets, stats);
+  const warningCount = warningState.warnings.length + (warningState.fallbackWarning ? 1 : 0);
 
   return (
     <SidebarProvider>
       <AppSidebar initialProfile={profile} initialUser={user} />
       <SidebarInset>
         <Header isAdmin={isAdmin} warningCount={warningCount} />
-        <div className="flex flex-1 flex-col gap-4 p-4 md:p-8 pt-6">
+        <div className="flex flex-1 flex-col gap-4 px-4 sm:px-6 lg:px-8 pt-6">
           {children}
         </div>
       </SidebarInset>

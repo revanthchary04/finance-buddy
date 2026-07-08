@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -32,9 +32,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { wishlistSchema, type WishlistFormData } from "../schemas/wishlist.schema";
-import { createWishlistItem } from "../actions/wishlist.actions";
+import { createWishlistItem, updateWishlistItem } from "../actions/wishlist.actions";
 
-export function AddWishlistDialog() {
+export function AddWishlistDialog({ editData, trigger }: { editData?: any, trigger?: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -50,13 +50,33 @@ export function AddWishlistDialog() {
     },
   });
 
+  useEffect(() => {
+    if (open && editData) {
+      form.reset({
+        name: editData.name || "",
+        description: editData.description || "",
+        target_amount: editData.target_amount || 0,
+        priority: editData.priority || "medium",
+        target_date: editData.target_date || "",
+        image_url: editData.image_url || "",
+      });
+    }
+  }, [open, editData, form]);
+
   function onSubmit(data: WishlistFormData) {
     startTransition(async () => {
       try {
-        await createWishlistItem(data);
-        toast.success("Goal added successfully");
+        if (editData) {
+          await updateWishlistItem(editData.id, data);
+          toast.success("Goal updated successfully");
+        } else {
+          await createWishlistItem(data);
+          toast.success("Goal added successfully");
+        }
         setOpen(false);
-        form.reset();
+        if (!editData) {
+          form.reset();
+        }
       } catch (error: any) {
         toast.error(error.message || "Failed to add goal");
       }
@@ -66,16 +86,18 @@ export function AddWishlistDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-          <Plus className="mr-2 h-4 w-4" />
-          Add Goal
-        </Button>
+        {trigger || (
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Goal
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add New Goal</DialogTitle>
+          <DialogTitle>{editData ? "Edit Goal" : "Add New Goal"}</DialogTitle>
           <DialogDescription>
-            Create a new goal or wishlist item you want to save for.
+            {editData ? "Update the details of your wishlist goal." : "Create a new goal or wishlist item you want to save for."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -169,7 +191,7 @@ export function AddWishlistDialog() {
             </div>
 
             <Button type="submit" className="w-full" disabled={isPending}>
-              {isPending ? "Adding..." : "Add Goal"}
+              {isPending ? "Saving..." : editData ? "Save Changes" : "Add Goal"}
             </Button>
           </form>
         </Form>

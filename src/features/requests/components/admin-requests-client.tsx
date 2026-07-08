@@ -1,10 +1,21 @@
 "use client";
 
-import { useTransition } from "react";
-import { updateFeatureRequestStatus } from "../actions/requests.actions";
+import { useState, useTransition } from "react";
+import { updateFeatureRequestStatus, addFeatureRequestComment } from "../actions/requests.actions";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Clock, CheckCircle2, XCircle, Search, SearchCheck, Loader2, Sparkles, MessageSquarePlus, MessageSquare } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -23,6 +34,23 @@ import {
 
 export function AdminFeatureRequestsClient({ initialRequests }: { initialRequests: any[] }) {
   const [isPending, startTransition] = useTransition();
+  const [openCommentDialog, setOpenCommentDialog] = useState<string | null>(null);
+  const [commentText, setCommentText] = useState("");
+
+  const handleAddComment = (reqId: string) => {
+    if (!commentText.trim()) return;
+    
+    startTransition(async () => {
+      const res = await addFeatureRequestComment(reqId, commentText);
+      if (res.error) {
+        toast.error(res.error);
+      } else {
+        toast.success("Comment added successfully!");
+        setCommentText("");
+        setOpenCommentDialog(null);
+      }
+    });
+  };
 
   const handleStatusChange = (id: string, status: string) => {
     startTransition(async () => {
@@ -37,14 +65,16 @@ export function AdminFeatureRequestsClient({ initialRequests }: { initialRequest
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "pending":
-        return <Badge variant="outline" className="text-muted-foreground"><Clock className="mr-1 h-3 w-3" /> Pending</Badge>;
-      case "in_review":
-        return <Badge variant="secondary" className="bg-blue-500/10 text-blue-500 hover:bg-blue-500/20"><Clock className="mr-1 h-3 w-3 animate-pulse" /> In Review</Badge>;
-      case "approved":
-        return <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"><CheckCircle2 className="mr-1 h-3 w-3" /> Approved</Badge>;
+      case "under_review":
+        return <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20"><Search className="mr-1 h-3 w-3" /> Under Review</Badge>;
+      case "accepted":
+        return <Badge variant="secondary" className="bg-green-500/10 text-green-500 hover:bg-green-500/20"><SearchCheck className="mr-1 h-3 w-3" /> Accepted</Badge>;
+      case "in_progress":
+        return <Badge variant="secondary" className="bg-blue-500/10 text-blue-500 hover:bg-blue-500/20"><Loader2 className="mr-1 h-3 w-3 animate-spin" /> In Progress</Badge>;
       case "rejected":
-        return <Badge variant="secondary" className="bg-rose-500/10 text-rose-500 hover:bg-rose-500/20"><XCircle className="mr-1 h-3 w-3" /> Rejected</Badge>;
+        return <Badge variant="secondary" className="bg-red-500/10 text-red-500 hover:bg-red-500/20"><XCircle className="mr-1 h-3 w-3" /> Rejected</Badge>;
+      case "completed":
+        return <Badge variant="secondary" className="bg-purple-500/10 text-purple-500 hover:bg-purple-500/20"><Sparkles className="mr-1 h-3 w-3" /> Completed</Badge>;
       default:
         return <Badge>{status}</Badge>;
     }
@@ -84,10 +114,60 @@ export function AdminFeatureRequestsClient({ initialRequests }: { initialRequest
                   )}
                   {req.title}
                 </TableCell>
-                <TableCell>
-                  <p className="text-sm text-muted-foreground line-clamp-3" title={req.description}>
+                <TableCell className="max-w-[300px] break-words whitespace-normal align-top">
+                  <p className="text-sm text-muted-foreground" title={req.description}>
                     {req.description}
                   </p>
+                  
+                  {req.feature_request_comments && req.feature_request_comments.length > 0 && (
+                    <div className="mt-4 space-y-2 border-t pt-3 border-border/50">
+                      <p className="text-xs font-semibold text-foreground flex items-center gap-1.5"><MessageSquare className="h-3 w-3" /> Admin Comments ({req.feature_request_comments.length})</p>
+                      {req.feature_request_comments.map((comment: any) => (
+                        <div key={comment.id} className="bg-muted/40 rounded p-2 text-xs">
+                          <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+                            <span className="font-medium text-primary">{comment.profiles?.full_name || 'Admin'}</span>
+                            <span>{formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}</span>
+                          </div>
+                          <p className="text-muted-foreground whitespace-pre-wrap">{comment.comment}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-3">
+                    <Dialog open={openCommentDialog === req.id} onOpenChange={(open) => {
+                      if (open) setOpenCommentDialog(req.id);
+                      else { setOpenCommentDialog(null); setCommentText(""); }
+                    }}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-7 text-xs">
+                          <MessageSquarePlus className="mr-2 h-3 w-3" /> Add Comment
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Add Admin Comment</DialogTitle>
+                          <DialogDescription>
+                            This comment will be visible to the user who requested the feature.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4 space-y-4">
+                          <Textarea 
+                            placeholder="Enter your comment here..." 
+                            value={commentText}
+                            onChange={(e) => setCommentText(e.target.value)}
+                            className="min-h-[100px]"
+                          />
+                          <div className="flex justify-end gap-2">
+                            <Button variant="ghost" onClick={() => setOpenCommentDialog(null)}>Cancel</Button>
+                            <Button onClick={() => handleAddComment(req.id)} disabled={isPending || !commentText.trim()}>
+                              {isPending ? "Adding..." : "Add Comment"}
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 </TableCell>
                 <TableCell>
                   {req.reference_links && req.reference_links.length > 0 ? (
@@ -119,10 +199,11 @@ export function AdminFeatureRequestsClient({ initialRequests }: { initialRequest
                         <SelectValue placeholder="Status" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="in_review">In Review</SelectItem>
-                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="under_review">Under Review</SelectItem>
+                        <SelectItem value="accepted">Accepted</SelectItem>
+                        <SelectItem value="in_progress">In Progress</SelectItem>
                         <SelectItem value="rejected">Rejected</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

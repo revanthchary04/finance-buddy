@@ -112,6 +112,45 @@ export const docsData: Record<string, DocPage> = {
       { title: "When the System Speaks, Listen", href: "/docs/calculations/financial-warnings" }
     ]
   },
+  "features/categories": {
+    title: "Categories — The Chapters of Your Financial Story",
+    description: "Every transaction belongs somewhere. Categories are the filing system of a disciplined mind.",
+    content: (
+      <div className="space-y-6 text-muted-foreground leading-relaxed">
+        <p className="text-xl font-medium text-foreground italic border-l-4 border-primary pl-4">
+          "Every transaction belongs somewhere. Categories are the filing system of a disciplined mind."
+        </p>
+        <p>
+          What categories are and why they matter. They form the foundation of how you analyze your financial behavior over time.
+        </p>
+        <SectionHeading>Two Types of Categories</SectionHeading>
+        <p>
+          There are two distinct types of categories: <strong>Global categories</strong> (created by the admin, available to all users to establish a baseline) and <strong>Personal categories</strong> (created by you, completely private and tailored to your specific lifestyle).
+        </p>
+        <p>
+          Furthermore, categories are explicitly split into Income vs Expense categories. This strict separation ensures clean reporting.
+        </p>
+        <SectionHeading>The Power of Categorization</SectionHeading>
+        <p>
+          These categories directly power the Reports donut chart and spending breakdown. When you assign a category while adding a transaction, you are feeding the analytics engine that will eventually show you exactly where your wealth is leaking or growing.
+        </p>
+        <p>
+          For administrators, global categories can be managed directly from Admin → Categories.
+        </p>
+        <div className="bg-primary/10 border border-primary/20 rounded-xl p-6 mt-8">
+          <h4 className="text-primary font-bold mb-2 uppercase text-sm tracking-wider">Pro Tip</h4>
+          <p className="text-foreground">
+            Create specific categories rather than generic ones. Not just Food but Groceries, Dining Out, and Coffee. The specificity reveals the pattern.
+          </p>
+        </div>
+      </div>
+    ),
+    relatedTopics: [
+      { title: "The Ledger of Your Life", href: "/docs/features/transactions" },
+      { title: "The Mirror That Does Not Lie", href: "/docs/features/reports" },
+      { title: "Category Management", href: "/docs/admin/category-management" }
+    ]
+  },
   "features/savings-accounts": {
     title: "The Vault Within",
     description: "Protect and grow your wealth pools.",

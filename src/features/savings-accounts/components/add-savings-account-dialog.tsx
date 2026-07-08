@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { createSavingsAccount } from "../actions/savings-accounts.actions";
+import { createSavingsAccount, updateSavingsAccount } from "../actions/savings-accounts.actions";
 import {
   Dialog,
   DialogContent,
@@ -32,7 +32,7 @@ const formSchema = z.object({
   initialBalance: z.string().optional(),
 });
 
-export function AddSavingsAccountDialog({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) {
+export function AddSavingsAccountDialog({ open, onOpenChange, editData }: { open: boolean, onOpenChange: (open: boolean) => void, editData?: any }) {
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -44,16 +44,33 @@ export function AddSavingsAccountDialog({ open, onOpenChange }: { open: boolean,
     },
   });
 
+  useEffect(() => {
+    if (open && editData) {
+      form.reset({
+        name: editData.name || "",
+        description: editData.description || "",
+        initialBalance: "",
+      });
+    }
+  }, [open, editData, form]);
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       setIsLoading(true);
-      await createSavingsAccount(
-        values.name, 
-        values.description, 
-        values.initialBalance ? Number(values.initialBalance) : 0
-      );
-      toast.success("Savings account created successfully");
-      form.reset();
+      if (editData) {
+        await updateSavingsAccount(editData.id, values.name, values.description);
+        toast.success("Savings account updated successfully");
+      } else {
+        await createSavingsAccount(
+          values.name, 
+          values.description, 
+          values.initialBalance ? Number(values.initialBalance) : 0
+        );
+        toast.success("Savings account created successfully");
+      }
+      if (!editData) {
+        form.reset();
+      }
       onOpenChange(false);
     } catch (error: any) {
       toast.error(error.message || "Failed to create savings account");
@@ -66,9 +83,9 @@ export function AddSavingsAccountDialog({ open, onOpenChange }: { open: boolean,
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create Savings Account</DialogTitle>
+          <DialogTitle>{editData ? "Edit Savings Account" : "Create Savings Account"}</DialogTitle>
           <DialogDescription>
-            Create a dedicated pool to track your savings.
+            {editData ? "Update the details of your savings pool." : "Create a dedicated pool to track your savings."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -103,23 +120,25 @@ export function AddSavingsAccountDialog({ open, onOpenChange }: { open: boolean,
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="initialBalance"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Initial Balance (₹) (Optional)</FormLabel>
-                  <FormControl>
-                    <Input type="number" step="0.01" min="0" placeholder="0.00" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {!editData && (
+              <FormField
+                control={form.control}
+                name="initialBalance"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Initial Balance (₹) (Optional)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" min="0" placeholder="0.00" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <div className="flex justify-end pt-4">
               <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Create Account
+                {editData ? "Save Changes" : "Create Account"}
               </Button>
             </div>
           </form>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,7 +68,12 @@ function formatDateJoined(dateString: string) {
 export function UserManagementTable({ users }: { users: UserProfile[] }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [mounted, setMounted] = useState(false);
   const { user: currentUser } = useAuth();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const filteredUsers = users.filter(
     (u) =>
@@ -246,7 +251,7 @@ export function UserManagementTable({ users }: { users: UserProfile[] }) {
                       </SelectContent>
                     </Select>
 
-                    {currentUser && (
+                    {mounted && currentUser && (
                       <UserRowActions userId={user.id} currentUserId={currentUser.id} userFullName={user.full_name || "Unknown"} />
                     )}
                   </div>

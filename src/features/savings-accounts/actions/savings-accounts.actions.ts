@@ -131,3 +131,28 @@ export async function getContributionHistory(accountId: string) {
 
   return data;
 }
+
+export async function updateSavingsAccount(id: string, name: string, description: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Unauthorized");
+
+  const { error } = await supabase
+    .from("savings_accounts")
+    .update({
+      name,
+      description
+    })
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) {
+    console.error("Error updating savings account:", error);
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/budgets");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
